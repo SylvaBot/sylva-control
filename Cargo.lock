@@ -733,39 +733,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cuepoint"
-version = "0.1.0"
-dependencies = [
- "cuepoint-core",
- "keyring",
- "log",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tokio",
- "tokio-util",
- "url",
-]
-
-[[package]]
-name = "cuepoint-core"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "log",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
- "tokio-tungstenite",
- "tokio-util",
- "url",
-]
-
-[[package]]
 name = "darling"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3054,6 +3021,39 @@ name = "pin-project-lite"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c938015719552d665fd0553b90d96cd7ff58e83e4c061ca99e6bb78865a72752"
+
+[[package]]
+name = "pine"
+version = "0.1.0"
+dependencies = [
+ "keyring",
+ "log",
+ "pine-core",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tokio",
+ "tokio-util",
+ "url",
+]
+
+[[package]]
+name = "pine-core"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "log",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-tungstenite",
+ "tokio-util",
+ "url",
+]
 
 [[package]]
 name = "piper"

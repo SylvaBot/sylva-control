@@ -2,9 +2,9 @@
 
 use crate::secrets;
 use crate::state::{start_realtime, twitch_client, AppState, SeSession};
-use cuepoint_core::se::{AlertAction, Channel, SeClient};
-use cuepoint_core::twitch::{self, DeviceCode};
-use cuepoint_core::{Activity, Error};
+use pine_core::se::{AlertAction, Channel, SeClient};
+use pine_core::twitch::{self, DeviceCode};
+use pine_core::{Activity, Error};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, State};
@@ -13,8 +13,8 @@ use tokio_util::sync::CancellationToken;
 
 type CmdResult<T> = Result<T, String>;
 
-/// A Twitch Client ID baked in at build time (`CUEPOINT_TWITCH_CLIENT_ID`), if any.
-const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = option_env!("CUEPOINT_TWITCH_CLIENT_ID");
+/// A Twitch Client ID baked in at build time (`PINE_TWITCH_CLIENT_ID`), if any.
+const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = option_env!("PINE_TWITCH_CLIENT_ID");
 
 fn se_err(e: Error) -> String {
     if e.is_unauthorized() {

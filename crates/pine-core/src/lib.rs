@@ -1,4 +1,4 @@
-//! Cuepoint core: StreamElements and Twitch clients with no GUI dependencies,
+//! Pine core: StreamElements and Twitch clients with no GUI dependencies,
 //! so they can be unit tested and reused by any front end.
 
 pub mod activity;

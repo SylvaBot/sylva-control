@@ -154,7 +154,7 @@ async fn session(
     };
 
     if !resumed {
-        if let Err(e) = ws.send(Message::Text(subscribe_frame(cfg, "cuepoint-activities"))).await {
+        if let Err(e) = ws.send(Message::Text(subscribe_frame(cfg, "pine-activities"))).await {
             return Outcome::Retry(format!("could not subscribe: {e}"));
         }
     }

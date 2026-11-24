@@ -1,8 +1,8 @@
 [package]
-name = "cuepoint-core"
+name = "pine-core"
 version.workspace = true
 edition.workspace = true
-description = "StreamElements and Twitch clients for Cuepoint (no GUI code)."
+description = "StreamElements and Twitch clients for Pine (no GUI code)."
 
 [dependencies]
 serde.workspace = true

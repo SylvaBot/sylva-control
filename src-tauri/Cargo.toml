@@ -1,14 +1,14 @@
 [package]
-name = "cuepoint"
+name = "pine"
 version.workspace = true
 edition.workspace = true
-description = "Cuepoint: a desktop control room for StreamElements streamers."
+description = "Pine: a desktop control room for StreamElements streamers."
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-cuepoint-core = { path = "../crates/cuepoint-core" }
+pine-core = { path = "../crates/pine-core" }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde.workspace = true

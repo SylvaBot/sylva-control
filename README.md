@@ -1,4 +1,4 @@
-# Cuepoint
+# Pine
 
 A desktop control room for StreamElements streamers, written in Rust.
 
@@ -19,7 +19,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
 2. Start the app:
 
    ```
-   cargo run -p cuepoint
+   cargo run -p pine
    ```
 
 3. To build an installer, install the Tauri CLI once and build:
@@ -33,7 +33,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
 ## Sign in
 
 **StreamElements (required).** Open https://streamelements.com/dashboard/account/channels,
-click **Show secrets**, copy the **JWT token** and paste it into Cuepoint. It is stored in your
+click **Show secrets**, copy the **JWT token** and paste it into Pine. It is stored in your
 system's credential store (Windows Credential Manager, macOS Keychain, or Secret Service on
 Linux). Treat it like a password.
 
@@ -42,9 +42,9 @@ Linux). Treat it like a password.
 1. Go to https://dev.twitch.tv/console/apps and register an application.
 2. Set **Client Type** to **Public**. Any OAuth Redirect URL works, for example `http://localhost`.
 3. Copy the **Client ID** into the Audience panel and click **Connect Twitch**.
-4. Enter the code Cuepoint shows on the Twitch page that opens, and approve.
+4. Enter the code Pine shows on the Twitch page that opens, and approve.
 
-To skip step 3 for everyone who uses your build, set `CUEPOINT_TWITCH_CLIENT_ID` when building.
+To skip step 3 for everyone who uses your build, set `PINE_TWITCH_CLIENT_ID` when building.
 
 ## Develop
 
@@ -57,7 +57,7 @@ The UI is static files in `ui/`, embedded at build time. Edit and re-run.
 
 ## Known limits
 
-* The mute and pause buttons show the state set from Cuepoint. If you mute alerts somewhere
+* The mute and pause buttons show the state set from Pine. If you mute alerts somewhere
   else, the button will not know until you press it.
 * History loads the last 30 days, up to 100 items. New events stream in live after that.
 * There is no "play next" control yet, because no supported StreamElements endpoint for it

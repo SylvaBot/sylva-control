@@ -1,5 +1,5 @@
 @echo off
-rem Double-click to fetch the latest Cuepoint code and start the app.
+rem Double-click to fetch the latest Pine code and start the app.
 cd /d "%~dp0"
 echo Getting the latest version...
 git pull --ff-only
@@ -9,6 +9,6 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Building and starting Cuepoint...
-cargo run -p cuepoint
+echo Building and starting Pine...
+cargo run -p pine
 if errorlevel 1 pause

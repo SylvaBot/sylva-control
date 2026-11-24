@@ -1,6 +1,6 @@
-use cuepoint_core::se::astro::{self, AstroConfig, AstroEvent};
-use cuepoint_core::se::{Channel, SeClient};
-use cuepoint_core::twitch::{TwitchClient, TwitchTokens};
+use pine_core::se::astro::{self, AstroConfig, AstroEvent};
+use pine_core::se::{Channel, SeClient};
+use pine_core::twitch::{TwitchClient, TwitchTokens};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex, RwLock};

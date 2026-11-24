@@ -131,7 +131,7 @@ impl SeClient {
             return Err(Error::Other("the StreamElements token is empty".into()));
         }
         let http = reqwest::Client::builder()
-            .user_agent(concat!("Cuepoint/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("Pine/", env!("CARGO_PKG_VERSION")))
             .timeout(Duration::from_secs(20))
             .build()?;
         Ok(Self { http, jwt, v2: v2.trim_end_matches('/').into(), v3: v3.trim_end_matches('/').into() })

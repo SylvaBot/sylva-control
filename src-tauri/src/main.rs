@@ -25,5 +25,5 @@ fn main() {
             commands::open_external,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Cuepoint");
+        .expect("error while running Pine");
 }

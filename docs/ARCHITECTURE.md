@@ -1,6 +1,6 @@
-# Cuepoint architecture
+# Pine architecture
 
-Cuepoint is a desktop control room for streamers who use StreamElements: a live activity
+Pine is a desktop control room for streamers who use StreamElements: a live activity
 feed, alert quick actions, and an audience panel (subscribers, followers, viewers, chatters).
 
 ## Stack and why
@@ -20,7 +20,7 @@ and testable either way.
 ## Layout of the code
 
 ```
-crates/cuepoint-core/       Pure Rust library, no GUI code, fully unit tested
+crates/pine-core/       Pure Rust library, no GUI code, fully unit tested
   src/activity.rs           One Activity model for REST history and live events
   src/se/mod.rs             StreamElements REST: channels/me, activities, sessions,
                             alert actions, overlay reload, activity replay
@@ -65,7 +65,7 @@ dev.twitch.tv/docs.
   a client ID, so the JWT is the right starting point.
 * **Twitch:** device code flow with a Public client, so no client secret ships in the app.
   The user registers a free app at dev.twitch.tv and pastes its Client ID once (or it can be
-  baked in at build time with `CUEPOINT_TWITCH_CLIENT_ID`). Access tokens refresh
+  baked in at build time with `PINE_TWITCH_CLIENT_ID`). Access tokens refresh
   automatically on a 401 and the new tokens are saved back to the credential store.
 
 ## Realtime flow

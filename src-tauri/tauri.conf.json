@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cuepoint",
+  "productName": "Pine",
   "version": "0.1.0",
-  "identifier": "app.cuepoint.desktop",
+  "identifier": "app.pine.desktop",
   "build": {
     "frontendDist": "../ui"
   },
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Cuepoint",
+        "title": "Pine",
         "width": 1180,
         "height": 820,
         "minWidth": 760,

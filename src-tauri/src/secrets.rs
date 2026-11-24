@@ -1,9 +1,9 @@
 //! Tokens live in the operating system's credential store (Windows Credential Manager,
 //! macOS Keychain, Secret Service on Linux), never in plain files.
 
-use cuepoint_core::twitch::TwitchTokens;
+use pine_core::twitch::TwitchTokens;
 
-const SERVICE: &str = "app.cuepoint.desktop";
+const SERVICE: &str = "app.pine.desktop";
 const SE_JWT: &str = "streamelements-jwt";
 const TWITCH: &str = "twitch-tokens";
 

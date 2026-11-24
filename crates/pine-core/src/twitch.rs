@@ -111,7 +111,7 @@ impl<T> From<HelixPage<T>> for Page<T> {
 
 pub fn http_client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
-        .user_agent(concat!("Cuepoint/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("Pine/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(20))
         .build()?)
 }
