@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuepoint</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="logo.svg" alt="" width="26" height="26" />
+      <span>Cuepoint</span>
+    </div>
+    <div class="stats" aria-label="Channel stats">
+      <div class="stat" title="Live viewers (Twitch)"><span class="stat-label">Viewers</span><span class="stat-value" id="stat-viewers">-</span></div>
+      <div class="stat" title="People in chat (Twitch)"><span class="stat-label">Chatters</span><span class="stat-value" id="stat-chatters">-</span></div>
+      <div class="stat" title="Total followers (StreamElements)"><span class="stat-label">Followers</span><span class="stat-value" id="stat-followers">-</span></div>
+      <div class="stat" title="Total subscribers (StreamElements)"><span class="stat-label">Subs</span><span class="stat-value" id="stat-subs">-</span></div>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" id="live-pill" hidden>OFFLINE</span>
+      <span class="pill" id="rt-pill" title="Realtime connection">Not connected</span>
+      <button class="icon-btn" id="account-btn" title="Accounts" aria-haspopup="true">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+      <div class="menu" id="account-menu" hidden>
+        <div class="menu-row"><span class="muted">StreamElements</span><span id="menu-se-name">-</span></div>
+        <button id="se-signout">Sign out of StreamElements</button>
+        <div class="menu-row"><span class="muted">Twitch</span><span id="menu-tw-name">Not connected</span></div>
+        <button id="tw-signout">Disconnect Twitch</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel feed-panel" aria-labelledby="feed-title">
+      <div class="panel-head">
+        <h2 id="feed-title">Activity</h2>
+        <div class="panel-tools">
+          <button class="ghost-btn" id="filter-btn" aria-haspopup="true">Filter <span id="filter-count"></span></button>
+          <button class="icon-btn" id="feed-refresh" title="Reload history">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <div class="menu filter-menu" id="filter-menu" hidden></div>
+      </div>
+      <ol class="feed" id="feed" aria-live="polite"></ol>
+      <p class="empty" id="feed-empty" hidden>No activity yet. New follows, subs, cheers and redemptions will show up here as they happen.</p>
+    </section>
+
+    <div class="side">
+      <section class="panel" aria-labelledby="qa-title">
+        <div class="panel-head"><h2 id="qa-title">Quick actions</h2></div>
+        <div class="actions">
+          <button class="action" id="act-mute" data-on="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path class="x" d="M17 9l4 6M21 9l-4 6" stroke="currentColor" stroke-width="2"/></svg>
+            <span>Mute alerts</span>
+          </button>
+          <button class="action" id="act-pause" data-on="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            <span>Pause alerts</span>
+          </button>
+          <button class="action" id="act-skip">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l8 6-8 6zM14 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            <span>Skip alert</span>
+          </button>
+          <button class="action" id="act-reload">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>Reload overlays</span>
+          </button>
+          <div class="action timer" id="timer">
+            <div class="timer-display" id="timer-display">00:00</div>
+            <div class="timer-controls">
+              <label class="sr-only" for="timer-minutes">Countdown minutes</label>
+              <input id="timer-minutes" type="number" min="0" max="999" value="0" title="Countdown minutes (0 counts up)" />
+              <button id="timer-start" title="Start or pause">Start</button>
+              <button id="timer-reset" title="Reset">Reset</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel audience-panel" aria-labelledby="aud-title">
+        <div class="panel-head">
+          <h2 id="aud-title">Audience</h2>
+          <div class="panel-tools">
+            <button class="icon-btn" id="aud-refresh" title="Refresh list">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="tabs" role="tablist">
+          <button role="tab" class="tab" data-kind="subscribers" aria-selected="true">Subs</button>
+          <button role="tab" class="tab" data-kind="followers" aria-selected="false">Followers</button>
+          <button role="tab" class="tab" data-kind="chatters" aria-selected="false">Chatters</button>
+        </div>
+
+        <div id="aud-connect" class="connect" hidden>
+          <p>Connect Twitch to see your subscribers, followers, chatters and live viewer count.</p>
+          <label for="tw-client-id">Twitch Client ID</label>
+          <input id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="From dev.twitch.tv/console/apps" />
+          <button class="primary" id="tw-connect">Connect Twitch</button>
+          <p class="hint">Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a> with Client Type <b>Public</b>. Any OAuth redirect URL works, for example http://localhost.</p>
+          <div id="tw-code" class="device-code" hidden>
+            <p>Enter this code on the Twitch page that just opened:</p>
+            <div class="code" id="tw-user-code"></div>
+            <p class="hint">Waiting for approval. <a href="#" id="tw-open-again">Open the page again</a> or <a href="#" id="tw-cancel">cancel</a>.</p>
+          </div>
+        </div>
+
+        <div id="aud-body">
+          <div class="aud-tools">
+            <input id="aud-search" type="search" placeholder="Search loaded names" aria-label="Search loaded names" />
+            <span class="muted" id="aud-total"></span>
+          </div>
+          <ul class="aud-list" id="aud-list"></ul>
+          <button class="ghost-btn more" id="aud-more" hidden>Load more</button>
+          <p class="empty" id="aud-empty" hidden></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="overlay" id="signin" hidden>
+    <form class="dialog" id="signin-form">
+      <img src="logo.svg" alt="" width="48" height="48" />
+      <h1>Sign in to StreamElements</h1>
+      <p>Paste your channel's JWT token. Find it in the StreamElements dashboard under <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account &gt; Channels</a>, then <b>Show secrets</b>.</p>
+      <label for="se-token" class="sr-only">JWT token</label>
+      <textarea id="se-token" rows="4" spellcheck="false" autocomplete="off" placeholder="eyJhbGciOi..." required></textarea>
+      <p class="hint">The token stays on this computer in your system's credential store. Treat it like a password.</p>
+      <p class="error" id="signin-error" hidden></p>
+      <button class="primary" type="submit" id="signin-submit">Sign in</button>
+    </form>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+</body>
+</html>
