@@ -80,7 +80,7 @@ dev.twitch.tv/docs.
 
 ## Testing
 
-`cargo test --workspace` runs 14 tests, including a local websocket server that checks the
+`cargo test --workspace` runs 15 tests, including a local websocket server that checks the
 subscribe frame, ping and pong, activity delivery and the reconnect token flow, and a local
 HTTP server that checks every REST request's method, path, auth header and body, the Twitch
 token refresh and the device code polling.

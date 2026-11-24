@@ -49,7 +49,7 @@ To skip step 3 for everyone who uses your build, set `CUEPOINT_TWITCH_CLIENT_ID`
 ## Develop
 
 ```
-cargo test --workspace      # 14 tests: REST shapes, websocket protocol, Twitch auth
+cargo test --workspace      # 15 tests: REST shapes, websocket protocol, Twitch auth
 cargo clippy --workspace --all-targets
 ```
 
