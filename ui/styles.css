@@ -56,6 +56,12 @@ a { color: var(--teal); }
 .pill.bad { color: var(--rose); border-color: color-mix(in srgb, var(--rose) 45%, transparent); }
 .pill.live { background: var(--rose); color: #fff; border-color: var(--rose); }
 
+.update-btn {
+  background: var(--amber); color: #2a1a00; border: 0; border-radius: 999px;
+  padding: 4px 12px; font-size: 12px; font-weight: 800;
+}
+.update-btn:disabled { opacity: .6; cursor: progress; }
+
 .icon-btn, .ghost-btn {
   background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--muted);
   padding: 5px 8px; display: inline-flex; align-items: center; gap: 6px;

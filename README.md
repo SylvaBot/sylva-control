@@ -30,6 +30,13 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
    cargo tauri build
    ```
 
+## Updates
+
+If you run Pine from a git clone, it checks for new changes every 15 minutes. When some are
+ready, an **Update ready** button appears in the top bar. Click it and Pine closes, pulls the
+changes, rebuilds and reopens. You can also use **Check for updates** in the account menu, or
+double-click `update-and-run.bat`.
+
 ## Sign in
 
 **StreamElements (required).** Open https://streamelements.com/dashboard/account/channels,

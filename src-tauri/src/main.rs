@@ -4,6 +4,7 @@
 mod commands;
 mod secrets;
 mod state;
+mod updater;
 
 fn main() {
     tauri::Builder::default()
@@ -23,6 +24,8 @@ fn main() {
             commands::twitch_sign_out,
             commands::get_audience,
             commands::open_external,
+            updater::check_for_update,
+            updater::apply_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Pine");

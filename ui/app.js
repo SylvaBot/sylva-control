@@ -593,6 +593,48 @@ $("tw-cancel").addEventListener("click", async (e) => {
   $("tw-connect").disabled = false;
 });
 
+// ---------- updates (git checkout installs) ----------
+
+let updateTimer = null;
+async function checkUpdates(manual = false) {
+  clearTimeout(updateTimer);
+  updateTimer = setTimeout(checkUpdates, 15 * 60 * 1000);
+  const btn = $("update-btn");
+  try {
+    const u = await invoke("check_for_update");
+    $("check-update").hidden = !u.supported;
+    if (!u.supported) return;
+    btn.hidden = u.behind === 0;
+    if (u.behind > 0) {
+      btn.textContent = u.behind === 1 ? "Update ready" : "Update ready (" + u.behind + ")";
+      btn.title = "What's new:\n" + u.changes.map((c) => "- " + c).join("\n");
+      if (manual) toast(u.behind === 1 ? "1 update is ready" : u.behind + " updates are ready");
+    } else if (manual) {
+      toast("Pine is up to date");
+    }
+  } catch (x) {
+    if (manual) toast(String(x), true);
+    else console.warn(x);
+  }
+}
+
+$("update-btn").addEventListener("click", async () => {
+  const btn = $("update-btn");
+  btn.disabled = true;
+  toast("Updating. Pine will close, rebuild and reopen in a minute or two.");
+  try {
+    await invoke("apply_update");
+  } catch (x) {
+    btn.disabled = false;
+    toast(String(x), true);
+  }
+});
+
+$("check-update").addEventListener("click", () => {
+  $("account-menu").hidden = true;
+  checkUpdates(true);
+});
+
 // ---------- startup ----------
 
 async function start() {
@@ -628,6 +670,7 @@ async function start() {
   await loadFeed();
   refreshStats();
   loadAudience(true);
+  setTimeout(checkUpdates, 3000);
 }
 
 start();
