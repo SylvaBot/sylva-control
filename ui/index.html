@@ -8,30 +8,58 @@
   <script src="app.js" defer></script>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-gift" viewBox="0 0 24 24"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3-5-1s3 1 5 1zm0 0c1.5-3 5-3 5-1s-3 1-5 1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-gem" viewBox="0 0 24 24"><path d="M7 4h10l4 5-9 11L3 9zM3 9h18M9 4l3 16M15 4l-3 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+      <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.5 9.5c-.4-.9-1.4-1.5-2.5-1.5-1.4 0-2.5.8-2.5 2s1.1 1.6 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1.1 0-2.1-.6-2.5-1.5M12 6.5v11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13h6l-1 8 8-10h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" fill="currentColor"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><path d="M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM14 14h5v5h-5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V10M10 20V5M15 20v-7M20 20V8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 20c0-3.6 3-5.5 6.5-5.5s6.5 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.5 2.4 3.5 5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor"/></symbol>
+      <symbol id="i-replay" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10.5 9.5v5l4-2.5z" fill="currentColor"/></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path class="wave" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path class="x" d="m16 9.5 5 5m0-5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path class="bars" d="M9 6v12M15 6v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="play" d="M8 5.5v13l10-6.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 6.5v11l8-5.5zM13 6.5v11l8-5.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 4 9 5-9 5-9-5zM3 14l9 5 9-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+      <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 13.5V10M9.5 3h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+      <symbol id="i-twitch" viewBox="0 0 24 24"><path d="M5 3 3.5 6.5V19H8v2.5h2.5L13 19h3.5l4-4V3zm13.5 11-2.5 2.5h-4L9.5 19v-2.5H6V5h12.5zM15 7.5v5M11 7.5v5" fill="currentColor"/></symbol>
+    </defs>
+  </svg>
+
   <header class="topbar">
     <div class="brand">
-      <img src="logo.svg" alt="" width="26" height="26" />
+      <img src="logo.svg" alt="" width="34" height="34" />
       <span>Pine</span>
     </div>
-    <div class="stats" aria-label="Channel stats">
-      <div class="stat" title="Live viewers (Twitch)"><span class="stat-label">Viewers</span><span class="stat-value" id="stat-viewers">-</span></div>
-      <div class="stat" title="People in chat (Twitch)"><span class="stat-label">Chatters</span><span class="stat-value" id="stat-chatters">-</span></div>
-      <div class="stat" title="Total followers (StreamElements)"><span class="stat-label">Followers</span><span class="stat-value" id="stat-followers">-</span></div>
-      <div class="stat" title="Total subscribers (StreamElements)"><span class="stat-label">Subs</span><span class="stat-value" id="stat-subs">-</span></div>
-    </div>
+    <label class="search">
+      <svg aria-hidden="true"><use href="#i-search"/></svg>
+      <span class="sr-only">Search activity</span>
+      <input id="feed-search" type="search" placeholder="Search activity" autocomplete="off" spellcheck="false" />
+    </label>
     <div class="topbar-right">
-      <button class="update-btn" id="update-btn" hidden>Update</button>
-      <span class="pill" id="live-pill" hidden>OFFLINE</span>
-      <span class="pill" id="rt-pill" title="Realtime connection">Not connected</span>
-      <button class="icon-btn" id="account-btn" title="Accounts" aria-haspopup="true">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      <button class="update-btn" id="update-btn" hidden>Update ready</button>
+      <span class="status" id="rt-pill" title="Live events"><span class="status-dot"></span><span class="status-text">Offline</span></span>
+      <button class="user-pill" id="account-btn" aria-haspopup="true" aria-expanded="false">
+        <span class="avatar" id="user-avatar"></span>
+        <span id="user-name">Not signed in</span>
       </button>
       <div class="menu" id="account-menu" hidden>
         <div class="menu-row"><span class="muted">StreamElements</span><span id="menu-se-name">-</span></div>
-        <button id="se-signout">Sign out of StreamElements</button>
         <div class="menu-row"><span class="muted">Twitch</span><span id="menu-tw-name">Not connected</span></div>
-        <button id="tw-signout">Disconnect Twitch</button>
+        <div class="menu-sep"></div>
         <button id="check-update" hidden>Check for updates</button>
+        <button id="tw-signout">Disconnect Twitch</button>
+        <button id="se-signout">Sign out of StreamElements</button>
       </div>
     </div>
   </header>
@@ -41,98 +69,135 @@
       <div class="panel-head">
         <h2 id="feed-title">Activity</h2>
         <div class="panel-tools">
-          <button class="ghost-btn" id="filter-btn" aria-haspopup="true">Filter <span id="filter-count"></span></button>
-          <button class="icon-btn" id="feed-refresh" title="Reload history">
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </button>
+          <button class="round" id="feed-refresh" title="Reload history"><svg aria-hidden="true"><use href="#i-refresh"/></svg></button>
         </div>
-        <div class="menu filter-menu" id="filter-menu" hidden></div>
       </div>
+      <div class="chips" id="feed-chips" role="group" aria-label="Filter activity"></div>
       <ol class="feed" id="feed" aria-live="polite"></ol>
-      <p class="empty" id="feed-empty" hidden>No activity yet. New follows, subs, cheers and redemptions will show up here as they happen.</p>
+      <p class="empty" id="feed-empty" hidden></p>
     </section>
 
-    <div class="side">
-      <section class="panel" aria-labelledby="qa-title">
-        <div class="panel-head"><h2 id="qa-title">Quick actions</h2></div>
-        <div class="actions">
-          <button class="action" id="act-mute" data-on="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path class="x" d="M17 9l4 6M21 9l-4 6" stroke="currentColor" stroke-width="2"/></svg>
-            <span>Mute alerts</span>
-          </button>
-          <button class="action" id="act-pause" data-on="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
-            <span>Pause alerts</span>
-          </button>
-          <button class="action" id="act-skip">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6l8 6-8 6zM14 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            <span>Skip alert</span>
-          </button>
-          <button class="action" id="act-reload">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <span>Reload overlays</span>
-          </button>
-          <div class="action timer" id="timer">
-            <div class="timer-display" id="timer-display">00:00</div>
-            <div class="timer-controls">
-              <label class="sr-only" for="timer-minutes">Countdown minutes</label>
-              <input id="timer-minutes" type="number" min="0" max="999" value="0" title="Countdown minutes (0 counts up)" />
-              <button id="timer-start" title="Start or pause">Start</button>
-              <button id="timer-reset" title="Reset">Reset</button>
+    <section class="panel side-panel" aria-labelledby="ov-title">
+      <div class="panel-head">
+        <h2 id="ov-title">Overview</h2>
+        <div class="panel-tools">
+          <span class="live-chip" id="live-pill" hidden>Offline</span>
+          <button class="round" id="stats-refresh" title="Refresh numbers"><svg aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </div>
+
+      <div class="side-scroll">
+        <div class="stat-grid">
+          <article class="card stat-card">
+            <div class="card-top"><span class="tag">Viewers</span><span class="icon-dot c-sky"><svg aria-hidden="true"><use href="#i-eye"/></svg></span></div>
+            <div class="big" id="stat-viewers">-</div>
+            <div class="subs"><div class="sub"><span>Status</span><b id="sub-status">-</b></div><div class="sub"><span>Source</span><b>Twitch</b></div></div>
+          </article>
+          <article class="card stat-card">
+            <div class="card-top"><span class="tag">Chatters</span><span class="icon-dot c-butter"><svg aria-hidden="true"><use href="#i-chat"/></svg></span></div>
+            <div class="big" id="stat-chatters">-</div>
+            <div class="subs"><div class="sub"><span>Updated</span><b id="sub-updated">-</b></div><div class="sub"><span>Source</span><b>Twitch</b></div></div>
+          </article>
+          <article class="card stat-card">
+            <div class="card-top"><span class="tag">Followers</span><span class="icon-dot c-mint"><svg aria-hidden="true"><use href="#i-heart"/></svg></span></div>
+            <div class="big" id="stat-followers">-</div>
+            <div class="subs"><div class="sub"><span>This stream</span><b id="sub-followers">-</b></div><div class="sub"><span>Source</span><b>StreamElements</b></div></div>
+          </article>
+          <article class="card stat-card">
+            <div class="card-top"><span class="tag">Subscribers</span><span class="icon-dot c-lavender"><svg aria-hidden="true"><use href="#i-star"/></svg></span></div>
+            <div class="big" id="stat-subs">-</div>
+            <div class="subs"><div class="sub"><span>This stream</span><b id="sub-subs">-</b></div><div class="sub"><span>Source</span><b>StreamElements</b></div></div>
+          </article>
+        </div>
+
+        <article class="card chart-card">
+          <div class="card-top"><span class="tag">Last 12 hours</span><span class="icon-dot c-coral"><svg aria-hidden="true"><use href="#i-chart"/></svg></span></div>
+          <div class="bars" id="bars" aria-hidden="true"></div>
+          <div class="chart-foot">
+            <div class="big" id="events-total">0</div>
+            <div class="big-caption">events in the last 12 hours</div>
+          </div>
+          <div class="subs three">
+            <div class="sub"><span>Follows</span><b id="sum-follows">0</b></div>
+            <div class="sub"><span>Subs and gifts</span><b id="sum-subs">0</b></div>
+            <div class="sub"><span>Bits</span><b id="sum-bits">0</b></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top"><span class="tag">Quick actions</span><span class="icon-dot c-pink"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span></div>
+          <div class="actions">
+            <button class="action" id="act-mute" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-mute"/></svg></span><span class="action-label">Mute alerts</span></button>
+            <button class="action" id="act-pause" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-pause"/></svg></span><span class="action-label">Pause alerts</span></button>
+            <button class="action" id="act-skip"><span class="action-icon"><svg aria-hidden="true"><use href="#i-skip"/></svg></span><span class="action-label">Skip alert</span></button>
+            <button class="action" id="act-reload"><span class="action-icon"><svg aria-hidden="true"><use href="#i-layers"/></svg></span><span class="action-label">Reload overlays</span></button>
+            <div class="timer" id="timer">
+              <div class="timer-head"><span class="action-icon"><svg aria-hidden="true"><use href="#i-timer"/></svg></span><span class="action-label">Timer</span></div>
+              <div class="timer-display" id="timer-display">00:00</div>
+              <div class="timer-controls">
+                <label class="mins"><span class="sr-only">Countdown minutes</span><input id="timer-minutes" type="number" min="0" max="999" value="0" title="Countdown minutes. 0 counts up." /><span>min</span></label>
+                <button class="pill-btn" id="timer-start">Start</button>
+                <button class="pill-btn ghost" id="timer-reset">Reset</button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </article>
 
-      <section class="panel audience-panel" aria-labelledby="aud-title">
-        <div class="panel-head">
-          <h2 id="aud-title">Audience</h2>
-          <div class="panel-tools">
-            <button class="icon-btn" id="aud-refresh" title="Refresh list">
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
+        <article class="card audience-card">
+          <div class="card-top">
+            <span class="tag">Audience</span>
+            <div class="card-tools">
+              <button class="round small" id="aud-refresh" title="Refresh list"><svg aria-hidden="true"><use href="#i-refresh"/></svg></button>
+              <span class="icon-dot c-sand"><svg aria-hidden="true"><use href="#i-users"/></svg></span>
+            </div>
           </div>
-        </div>
-        <div class="tabs" role="tablist">
-          <button role="tab" class="tab" data-kind="subscribers" aria-selected="true">Subs</button>
-          <button role="tab" class="tab" data-kind="followers" aria-selected="false">Followers</button>
-          <button role="tab" class="tab" data-kind="chatters" aria-selected="false">Chatters</button>
-        </div>
+          <div class="segmented" role="tablist">
+            <button role="tab" class="seg" data-kind="subscribers" aria-selected="true">Subscribers</button>
+            <button role="tab" class="seg" data-kind="followers" aria-selected="false">Followers</button>
+            <button role="tab" class="seg" data-kind="chatters" aria-selected="false">Chatters</button>
+          </div>
 
-        <div id="aud-connect" class="connect" hidden>
-          <p>Connect Twitch to see your subscribers, followers, chatters and live viewer count.</p>
-          <label for="tw-client-id">Twitch Client ID</label>
-          <input id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="From dev.twitch.tv/console/apps" />
-          <button class="primary" id="tw-connect">Connect Twitch</button>
-          <p class="hint">Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a> with Client Type <b>Public</b>. Any OAuth redirect URL works, for example http://localhost.</p>
-          <div id="tw-code" class="device-code" hidden>
-            <p>Enter this code on the Twitch page that just opened:</p>
-            <div class="code" id="tw-user-code"></div>
-            <p class="hint">Waiting for approval. <a href="#" id="tw-open-again">Open the page again</a> or <a href="#" id="tw-cancel">cancel</a>.</p>
+          <div id="aud-connect" class="connect" hidden>
+            <div class="connect-head"><span class="icon-dot c-lavender"><svg aria-hidden="true"><use href="#i-twitch"/></svg></span><p>Connect Twitch to see your subscribers, followers, chatters and live viewer count.</p></div>
+            <label class="field">
+              <span>Twitch Client ID</span>
+              <input id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="From dev.twitch.tv/console/apps" />
+            </label>
+            <button class="primary" id="tw-connect">Connect Twitch</button>
+            <p class="hint">Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a> with Client Type <b>Public</b>. Any OAuth redirect URL works, for example http://localhost.</p>
+            <div id="tw-code" class="device-code" hidden>
+              <p>Enter this code on the Twitch page that just opened:</p>
+              <div class="code" id="tw-user-code"></div>
+              <p class="hint">Waiting for approval. <a href="#" id="tw-open-again">Open the page again</a> or <a href="#" id="tw-cancel">cancel</a>.</p>
+            </div>
           </div>
-        </div>
 
-        <div id="aud-body">
-          <div class="aud-tools">
-            <input id="aud-search" type="search" placeholder="Search loaded names" aria-label="Search loaded names" />
-            <span class="muted" id="aud-total"></span>
+          <div id="aud-body">
+            <div class="aud-tools">
+              <label class="search small">
+                <svg aria-hidden="true"><use href="#i-search"/></svg>
+                <span class="sr-only">Search loaded names</span>
+                <input id="aud-search" type="search" placeholder="Search names" autocomplete="off" spellcheck="false" />
+              </label>
+              <span class="aud-total" id="aud-total"></span>
+            </div>
+            <ul class="aud-list" id="aud-list"></ul>
+            <button class="pill-btn ghost more" id="aud-more" hidden>Load more</button>
+            <p class="empty" id="aud-empty" hidden></p>
           </div>
-          <ul class="aud-list" id="aud-list"></ul>
-          <button class="ghost-btn more" id="aud-more" hidden>Load more</button>
-          <p class="empty" id="aud-empty" hidden></p>
-        </div>
-      </section>
-    </div>
+        </article>
+      </div>
+    </section>
   </main>
 
   <div class="overlay" id="signin" hidden>
     <form class="dialog" id="signin-form">
-      <img src="logo.svg" alt="" width="48" height="48" />
-      <h1>Sign in to StreamElements</h1>
-      <p>Paste your channel's JWT token. Find it in the StreamElements dashboard under <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account &gt; Channels</a>, then <b>Show secrets</b>.</p>
+      <img src="logo.svg" alt="" width="52" height="52" />
+      <h1>Welcome to Pine</h1>
+      <p>Sign in with your StreamElements JWT token. Find it in the dashboard under <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account, Channels</a>. Click the copy icon next to <b>JWT Token</b>.</p>
       <label for="se-token" class="sr-only">JWT token</label>
-      <textarea id="se-token" rows="4" spellcheck="false" autocomplete="off" placeholder="eyJhbGciOi..." required></textarea>
-      <p class="hint">The token stays on this computer in your system's credential store. Treat it like a password.</p>
+      <textarea id="se-token" rows="4" spellcheck="false" autocomplete="off" placeholder="Paste your JWT token" required></textarea>
+      <p class="hint">Saved in your system's credential store, never in a file. Treat it like a password.</p>
       <p class="error" id="signin-error" hidden></p>
       <button class="primary" type="submit" id="signin-submit">Sign in</button>
     </form>

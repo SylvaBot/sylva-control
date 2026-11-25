@@ -14,6 +14,16 @@ function el(tag, cls, text) {
   return n;
 }
 
+function icon(id) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS(ns, "use");
+  use.setAttribute("href", "#" + id);
+  svg.appendChild(use);
+  return svg;
+}
+
 function store(key, value) {
   try {
     if (value === undefined) return JSON.parse(localStorage.getItem(key));
@@ -27,7 +37,7 @@ function store(key, value) {
 function toast(text, bad = false) {
   const t = el("div", "toast" + (bad ? " bad" : ""), text);
   $("toasts").appendChild(t);
-  setTimeout(() => t.remove(), bad ? 6000 : 2800);
+  setTimeout(() => t.remove(), bad ? 6500 : 3000);
 }
 
 const fmt = new Intl.NumberFormat();
@@ -60,25 +70,54 @@ function safeImg(url) {
   return typeof url === "string" && url.startsWith("https://") ? url : null;
 }
 
+const MONO_COLORS = ["c-mint", "c-lavender", "c-pink", "c-sky", "c-butter", "c-coral", "c-sand"];
+function monoColor(name) {
+  let h = 0;
+  for (const ch of name || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return MONO_COLORS[h % MONO_COLORS.length];
+}
+
+/** Round avatar: the image when we have a safe URL, otherwise the first letter. */
+function avatar(name, url, colorClass) {
+  const a = el("span", "avatar " + (colorClass || monoColor(name)));
+  const letter = (name || "?").trim().charAt(0).toUpperCase() || "?";
+  const src = safeImg(url);
+  if (src) {
+    const img = el("img");
+    img.src = src;
+    img.alt = "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.onerror = () => { img.remove(); a.textContent = letter; };
+    a.appendChild(img);
+  } else {
+    a.textContent = letter;
+  }
+  return a;
+}
+
 // ---------- auth ----------
 
 let auth = { streamelements: null, twitch: null, defaultTwitchClientId: null };
 
 function applyAuth(a) {
   auth = a;
-  $("signin").hidden = !!a.streamelements;
-  $("menu-se-name").textContent = a.streamelements
-    ? a.streamelements.displayName || a.streamelements.username || a.streamelements.id
-    : "-";
+  const se = a.streamelements;
+  $("signin").hidden = !!se;
+  const name = se ? se.displayName || se.username || "Streamer" : "Not signed in";
+  $("user-name").textContent = name;
+  $("user-avatar").replaceWith(Object.assign(avatar(name, se && se.avatar, "c-mint"), { id: "user-avatar" }));
+  $("menu-se-name").textContent = se ? name : "-";
   $("menu-tw-name").textContent = a.twitch ? a.twitch.login : "Not connected";
   $("tw-signout").hidden = !a.twitch;
+  $("se-signout").hidden = !se;
   $("aud-connect").hidden = !!a.twitch;
   $("aud-body").hidden = !a.twitch;
   if (!a.twitch) {
     const saved = store("twitchClientId");
     $("tw-client-id").value = saved || a.defaultTwitchClientId || "";
   }
-  if (!a.streamelements) setRealtime({ state: "stopped" });
+  if (!se) setRealtime({ state: "stopped" });
 }
 
 $("signin-form").addEventListener("submit", async (e) => {
@@ -105,16 +144,23 @@ $("signin-form").addEventListener("submit", async (e) => {
   }
 });
 
+function setMenu(open) {
+  $("account-menu").hidden = !open;
+  $("account-btn").setAttribute("aria-expanded", String(open));
+}
 $("account-btn").addEventListener("click", (e) => {
   e.stopPropagation();
-  $("account-menu").hidden = !$("account-menu").hidden;
+  setMenu($("account-menu").hidden);
 });
 document.addEventListener("click", (e) => {
-  if (!$("account-menu").contains(e.target)) $("account-menu").hidden = true;
-  if (!$("filter-menu").contains(e.target) && e.target !== $("filter-btn")) $("filter-menu").hidden = true;
+  if (!$("account-menu").contains(e.target)) setMenu(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") setMenu(false);
 });
 
 $("se-signout").addEventListener("click", async () => {
+  setMenu(false);
   try {
     applyAuth(await invoke("se_sign_out"));
     feed = [];
@@ -126,6 +172,7 @@ $("se-signout").addEventListener("click", async () => {
 });
 
 $("tw-signout").addEventListener("click", async () => {
+  setMenu(false);
   try {
     applyAuth(await invoke("twitch_sign_out"));
     refreshStats();
@@ -145,174 +192,203 @@ document.addEventListener("click", (e) => {
 
 function setRealtime(s) {
   const p = $("rt-pill");
-  p.className = "pill";
+  const text = p.querySelector(".status-text");
+  p.classList.remove("ok", "warn", "bad");
+  p.title = "Live events";
   switch (s.state) {
     case "connecting":
-      p.textContent = "Connecting";
+      text.textContent = "Connecting";
       p.classList.add("warn");
       break;
     case "connected":
-      p.textContent = "Subscribing";
+      text.textContent = "Subscribing";
       p.classList.add("warn");
       break;
     case "live":
-      p.textContent = "Realtime on";
+      text.textContent = "Live events on";
       p.classList.add("ok");
       break;
     case "reconnecting":
-      p.textContent = "Reconnecting in " + s.inSecs + "s";
+      text.textContent = "Reconnecting in " + s.inSecs + "s";
       p.title = s.reason || "";
       p.classList.add("warn");
       break;
     case "unauthorized":
-      p.textContent = "Realtime off";
+      text.textContent = "Live events off";
       p.title = s.message || "";
       p.classList.add("bad");
       toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
       break;
     default:
-      p.textContent = "Not connected";
+      text.textContent = "Offline";
   }
 }
 
 // ---------- activity feed ----------
 
-const KIND_GROUPS = [
-  { id: "follow", label: "Follows", kinds: ["follow"] },
-  { id: "sub", label: "Subscriptions", kinds: ["subscriber"] },
-  { id: "gift", label: "Gifted subs", kinds: ["giftedSub", "communityGift"] },
-  { id: "cheer", label: "Bits", kinds: ["cheer"] },
-  { id: "tip", label: "Tips", kinds: ["tip"] },
-  { id: "redemption", label: "Redemptions", kinds: ["redemption"] },
-  { id: "raid", label: "Raids and hosts", kinds: ["raid", "host"] },
-  { id: "other", label: "Other", kinds: ["other"] },
+const GROUPS = [
+  { id: "follow", label: "Follows", color: "c-mint", icon: "i-heart", kinds: ["follow"] },
+  { id: "sub", label: "Subs", color: "c-lavender", icon: "i-star", kinds: ["subscriber"] },
+  { id: "gift", label: "Gifts", color: "c-pink", icon: "i-gift", kinds: ["giftedSub", "communityGift"] },
+  { id: "cheer", label: "Bits", color: "c-sky", icon: "i-gem", kinds: ["cheer"] },
+  { id: "tip", label: "Tips", color: "c-butter", icon: "i-coin", kinds: ["tip"] },
+  { id: "redemption", label: "Rewards", color: "c-coral", icon: "i-bolt", kinds: ["redemption"] },
+  { id: "raid", label: "Raids", color: "c-sand", icon: "i-flag", kinds: ["raid", "host"] },
+  { id: "other", label: "Other", color: "c-slate", icon: "i-dot", kinds: ["other"] },
 ];
 const MAX_ITEMS = 500;
 
 let feed = [];
-let hidden = new Set(store("hiddenGroups") || []);
+// Groups the user picked. Empty means "All".
+let shown = new Set((store("shownGroups") || []).filter((g) => GROUPS.some((x) => x.id === g)));
+let query = "";
 
 function groupOf(kind) {
-  const g = KIND_GROUPS.find((g) => g.kinds.includes(kind));
-  return g ? g.id : "other";
+  return GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[GROUPS.length - 1];
 }
 
-function buildFilterMenu() {
-  const m = $("filter-menu");
-  m.replaceChildren();
-  for (const g of KIND_GROUPS) {
-    const label = el("label");
-    const cb = el("input");
-    cb.type = "checkbox";
-    cb.checked = !hidden.has(g.id);
-    cb.addEventListener("change", () => {
-      if (cb.checked) hidden.delete(g.id);
-      else hidden.add(g.id);
-      store("hiddenGroups", [...hidden]);
+function buildChips() {
+  const wrap = $("feed-chips");
+  wrap.replaceChildren();
+  const all = el("button", "chip all");
+  all.type = "button";
+  all.setAttribute("aria-pressed", String(shown.size === 0));
+  all.append(icon("i-grid"), document.createTextNode("All"));
+  all.addEventListener("click", () => {
+    shown.clear();
+    store("shownGroups", []);
+    buildChips();
+    renderFeed();
+  });
+  wrap.appendChild(all);
+  for (const g of GROUPS) {
+    const c = el("button", "chip " + g.color);
+    c.type = "button";
+    c.setAttribute("aria-pressed", String(shown.has(g.id)));
+    c.append(icon(g.icon), document.createTextNode(g.label));
+    c.addEventListener("click", () => {
+      if (shown.has(g.id)) shown.delete(g.id);
+      else shown.add(g.id);
+      store("shownGroups", [...shown]);
+      buildChips();
       renderFeed();
     });
-    label.append(cb, document.createTextNode(g.label));
-    m.appendChild(label);
+    wrap.appendChild(c);
   }
-  const row = el("div", "menu-actions");
-  const all = el("button", null, "Show all");
-  all.addEventListener("click", () => { hidden.clear(); store("hiddenGroups", []); buildFilterMenu(); renderFeed(); });
-  row.appendChild(all);
-  m.appendChild(row);
 }
 
-$("filter-btn").addEventListener("click", (e) => {
-  e.stopPropagation();
-  $("filter-menu").hidden = !$("filter-menu").hidden;
-});
-
 function describe(a) {
-  // Returns { badges: [{text, cls}], from, to, message }
+  // who, to, kind label, optional big headline {num, unit}, optional caption parts, extra sub boxes
   const name = a.displayName || a.username || "Someone";
   const tier = tierLabel(a.tier);
-  const out = { badges: [], from: name, to: null, message: a.message };
-  const add = (text, cls = "") => text && out.badges.push({ text, cls });
+  const out = { who: name, to: null, kind: "", headline: null, caption: null, extra: [] };
+  const plural = (n, one, many) => (n === 1 ? one : many);
   switch (a.kind) {
     case "follow":
-      add("Follow", "kind");
+      out.kind = "Follow";
+      out.caption = ["Started following"];
       break;
     case "subscriber":
-      if (a.amount && a.amount > 1) add(a.amount + " months", "amount");
-      add(tier || "Sub", "kind");
+      out.kind = "Subscription";
+      if (a.amount != null && a.amount > 1) {
+        out.headline = { num: num(a.amount), unit: "months" };
+      } else {
+        out.caption = ["New subscriber"];
+      }
+      if (tier) out.extra.push(["Tier", tier.replace("Tier ", "")]);
       break;
     case "giftedSub":
-      add("Gift", "kind");
-      add(tier, "amount");
-      out.from = a.sender || "Anonymous";
+      out.kind = "Gift";
+      out.who = a.sender || "Anonymous";
       out.to = name;
+      out.caption = tier ? ["Gifted a ", { b: tier }, " sub"] : ["Gifted a sub"];
       break;
     case "communityGift":
-      if (a.amount) add(a.amount + "x", "amount");
-      add("Gift subs", "kind");
+      out.kind = "Gift subs";
+      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "gift sub", "gift subs") };
       break;
     case "cheer":
-      if (a.amount != null) add(num(a.amount) + (a.amount === 1 ? " bit" : " bits"), "amount");
-      add("Bits", "kind");
+      out.kind = "Bits";
+      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "bit", "bits") };
       break;
     case "tip":
-      if (a.amount != null) add(money(a.amount, a.currency), "amount");
-      add("Tip", "kind");
+      out.kind = "Tip";
+      if (a.amount != null) out.headline = { num: money(a.amount, a.currency), unit: "" };
       break;
     case "redemption":
-      add("Reward", "kind");
-      add(a.redemption, "amount");
+      out.kind = "Reward";
+      out.caption = a.redemption ? ["Redeemed ", { b: a.redemption }] : ["Redeemed a reward"];
       break;
     case "raid":
-      if (a.amount != null) add(num(a.amount) + (a.amount === 1 ? " viewer" : " viewers"), "amount");
-      add("Raid", "kind");
+      out.kind = "Raid";
+      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "raider", "raiders") };
       break;
     case "host":
-      if (a.amount != null) add(num(a.amount) + (a.amount === 1 ? " viewer" : " viewers"), "amount");
-      add("Host", "kind");
+      out.kind = "Host";
+      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "viewer", "viewers") };
       break;
     default:
-      add(a.rawType, "kind");
+      out.kind = a.rawType;
   }
   return out;
 }
 
 function renderItem(a, fresh) {
+  const g = groupOf(a.kind);
   const d = describe(a);
-  const li = el("li", "item k-" + a.kind + (fresh ? " fresh" : ""));
+  const li = el("li", "item k-" + a.kind + " " + g.color + (fresh ? " fresh" : ""));
   li.dataset.id = a.id;
 
-  const badges = el("div", "badges");
-  for (const b of d.badges) badges.appendChild(el("span", "badge " + b.cls, b.text));
-
-  const who = el("div", "who");
-  const src = safeImg(a.avatar);
-  if (src) {
-    const img = el("img");
-    img.src = src;
-    img.alt = "";
-    img.loading = "lazy";
-    img.referrerPolicy = "no-referrer";
-    img.onerror = () => img.remove();
-    who.appendChild(img);
-  }
-  const names = el("span", "names", d.from);
+  const top = el("div", "item-top");
+  const pill = el("span", "name-pill");
+  pill.appendChild(avatar(d.who, d.to ? null : a.avatar, g.color));
+  const names = el("span", "names", d.who);
   if (d.to) {
-    names.appendChild(el("span", "arrow", " to "));
+    names.appendChild(el("span", "to", " to "));
     names.appendChild(document.createTextNode(d.to));
   }
-  who.appendChild(names);
-
-  const time = el("time", "time", ago(a.createdAt));
+  pill.appendChild(names);
+  const kind = el("span", "kind", d.kind);
+  const time = el("time", null, ago(a.createdAt));
   if (a.createdAt) {
     time.dateTime = a.createdAt;
     time.title = new Date(a.createdAt).toLocaleString();
   }
+  const dot = el("span", "icon-dot " + g.color);
+  dot.appendChild(icon(g.icon));
+  top.append(pill, kind, el("span", "spacer"), time, dot);
+  li.appendChild(top);
 
-  li.append(badges, who, time);
-  if (d.message) li.appendChild(el("div", "msg", d.message));
+  if (d.headline) {
+    const h = el("div", "headline");
+    h.appendChild(el("span", "num", d.headline.num));
+    if (d.headline.unit) h.appendChild(el("span", "unit", d.headline.unit));
+    li.appendChild(h);
+  }
+  if (d.caption) {
+    const c = el("p", "caption");
+    for (const part of d.caption) {
+      c.appendChild(typeof part === "string" ? document.createTextNode(part) : el("b", null, part.b));
+    }
+    li.appendChild(c);
+  }
+  // Gifted subs carry an auto-generated "X gifted a sub to Y" message that repeats the caption.
+  const autoGiftText = a.kind === "giftedSub" && /gift/i.test(a.message || "");
+  if (a.message && !autoGiftText) li.appendChild(el("p", "msg", a.message));
+  if (d.extra.length) {
+    const meta = el("div", "meta");
+    for (const [k, v] of d.extra) {
+      const s = el("div", "sub");
+      s.append(el("span", null, k), el("b", null, v));
+      meta.appendChild(s);
+    }
+    li.appendChild(meta);
+  }
 
-  const replay = el("button", "replay", "Replay");
+  const replay = el("button", "replay");
+  replay.type = "button";
   replay.title = "Play this alert again";
+  replay.append(icon("i-replay"), document.createTextNode("Replay"));
   replay.addEventListener("click", async () => {
     replay.disabled = true;
     try {
@@ -329,15 +405,21 @@ function renderItem(a, fresh) {
 }
 
 function visible(a) {
-  return !hidden.has(groupOf(a.kind));
+  if (shown.size && !shown.has(groupOf(a.kind).id)) return false;
+  if (!query) return true;
+  const hay = [a.displayName, a.username, a.sender, a.message, a.redemption].filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(query);
 }
 
 function renderFeed() {
-  const list = $("feed");
   const items = feed.filter(visible);
-  list.replaceChildren(...items.map((a) => renderItem(a, false)));
-  $("feed-empty").hidden = items.length > 0;
-  $("filter-count").textContent = hidden.size ? "(" + (KIND_GROUPS.length - hidden.size) + "/" + KIND_GROUPS.length + ")" : "";
+  $("feed").replaceChildren(...items.map((a) => renderItem(a, false)));
+  const empty = $("feed-empty");
+  empty.hidden = items.length > 0;
+  empty.textContent = feed.length
+    ? "Nothing matches this filter."
+    : "No activity yet. Follows, subs, bits and rewards will appear here as they happen.";
+  renderChart();
 }
 
 function addLive(a) {
@@ -350,32 +432,95 @@ function addLive(a) {
     if (extra) extra.remove();
     $("feed-empty").hidden = true;
   }
+  renderChart();
 }
 
 async function loadFeed() {
   if (!auth.streamelements) return;
+  const btn = $("feed-refresh");
+  btn.classList.add("spin");
   try {
-    const history = await invoke("get_feed", { limit: 100 });
+    const history = await invoke("get_feed", { limit: 250 });
     const known = new Set(history.map((a) => a.id));
     // Keep live items that arrived while history was loading.
     feed = feed.filter((a) => !known.has(a.id)).concat(history);
     renderFeed();
   } catch (x) {
     toast("Could not load activity: " + x, true);
+  } finally {
+    btn.classList.remove("spin");
   }
 }
 
 $("feed-refresh").addEventListener("click", loadFeed);
 
+let searchTimer = null;
+$("feed-search").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    query = $("feed-search").value.trim().toLowerCase();
+    renderFeed();
+  }, 120);
+});
+
 setInterval(() => {
   for (const t of document.querySelectorAll("#feed time[datetime]")) t.textContent = ago(t.dateTime);
-}, 30000);
+  renderChart();
+}, 60000);
+
+// ---------- last 12 hours chart ----------
+
+function renderChart() {
+  const HOURS = 12;
+  const now = new Date();
+  const top = new Date(now);
+  top.setMinutes(0, 0, 0); // start of the current hour
+  const start = top.getTime() - (HOURS - 1) * 3600000;
+  const counts = new Array(HOURS).fill(0);
+  let follows = 0, subs = 0, bits = 0;
+  for (const a of feed) {
+    const t = Date.parse(a.createdAt);
+    if (!(t >= start)) continue;
+    const i = Math.min(HOURS - 1, Math.floor((t - start) / 3600000));
+    counts[i]++;
+    if (a.kind === "follow") follows++;
+    else if (a.kind === "subscriber" || a.kind === "giftedSub" || a.kind === "communityGift") subs++;
+    else if (a.kind === "cheer" && a.amount) bits += a.amount;
+  }
+  const max = Math.max(1, ...counts);
+  const bars = $("bars");
+  if (bars.children.length !== HOURS) {
+    bars.replaceChildren(...counts.map(() => {
+      const b = el("div", "bar");
+      b.append(el("i"), el("span"));
+      return b;
+    }));
+  }
+  counts.forEach((c, i) => {
+    const b = bars.children[i];
+    b.classList.toggle("now", i === HOURS - 1);
+    b.querySelector("i").style.height = Math.max(8, Math.round((c / max) * 100)) + "%";
+    b.title = c + (c === 1 ? " event" : " events");
+    const hour = new Date(start + i * 3600000);
+    b.querySelector("span").textContent = i % 2 === 1 ? hour.toLocaleTimeString([], { hour: "numeric" }).replace(/\s/g, "") : "";
+  });
+  $("events-total").textContent = num(counts.reduce((s, c) => s + c, 0));
+  $("sum-follows").textContent = num(follows);
+  $("sum-subs").textContent = num(subs);
+  $("sum-bits").textContent = num(bits);
+}
 
 // ---------- stats ----------
 
 function resetStats() {
-  for (const id of ["stat-viewers", "stat-chatters", "stat-followers", "stat-subs"]) $(id).textContent = "-";
+  for (const id of ["stat-viewers", "stat-chatters", "stat-followers", "stat-subs", "sub-status", "sub-updated", "sub-followers", "sub-subs"]) {
+    $(id).textContent = "-";
+  }
   $("live-pill").hidden = true;
+}
+
+function plusCount(n) {
+  return n === null || n === undefined ? "-" : "+" + num(n);
 }
 
 let statsTimer = null;
@@ -383,25 +528,31 @@ async function refreshStats() {
   clearTimeout(statsTimer);
   statsTimer = setTimeout(refreshStats, 30000);
   if (!auth.streamelements && !auth.twitch) return;
+  const btn = $("stats-refresh");
+  btn.classList.add("spin");
   try {
     const s = await invoke("get_stats");
     $("stat-followers").textContent = num(s.followers);
     $("stat-subs").textContent = num(s.subscribers);
+    $("sub-followers").textContent = plusCount(s.followersSession);
+    $("sub-subs").textContent = plusCount(s.subscribersSession);
     $("stat-viewers").textContent = num(s.viewers);
     $("stat-chatters").textContent = num(s.chatters);
+    const twitch = s.live !== null && s.live !== undefined;
+    $("sub-status").textContent = twitch ? (s.live ? "Live" : "Offline") : "Connect Twitch";
+    $("sub-updated").textContent = twitch ? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Connect Twitch";
     const live = $("live-pill");
-    live.hidden = s.live === null || s.live === undefined;
-    live.textContent = s.live ? "LIVE" : "OFFLINE";
-    live.className = "pill" + (s.live ? " live" : "");
-    const tip = s.problems.join("\n");
-    for (const id of ["stat-viewers", "stat-chatters", "stat-followers", "stat-subs"]) {
-      $(id).parentElement.dataset.problem = tip;
-    }
-    if (tip) console.warn(tip);
+    live.hidden = !twitch;
+    live.textContent = s.live ? "Live" : "Offline";
+    live.classList.toggle("on", !!s.live);
+    if (s.problems.length) console.warn(s.problems.join("\n"));
   } catch (x) {
     console.warn(x);
+  } finally {
+    btn.classList.remove("spin");
   }
 }
+$("stats-refresh").addEventListener("click", refreshStats);
 
 let statsSoon = null;
 function refreshStatsSoon() {
@@ -431,7 +582,7 @@ function toggleButton(btn, onAction, offAction, onLabel, offLabel, onToast, offT
     const ok = await runAction(btn, () => invoke("alert_action", { action: on ? offAction : onAction }), on ? offToast : onToast);
     if (ok) {
       btn.dataset.on = String(!on);
-      btn.querySelector("span").textContent = on ? offLabel : onLabel;
+      btn.querySelector(".action-label").textContent = on ? offLabel : onLabel;
     }
   });
 }
@@ -460,15 +611,18 @@ function timerTick() {
       $("timer").classList.add("done");
     }
   }
-  const m = Math.floor(secs / 60);
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
-  $("timer-display").textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  const mm = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  $("timer-display").textContent = h > 0 ? h + ":" + mm : mm;
 }
 function timerStop() {
   if (timer.running) timer.banked += Date.now() - timer.startedAt;
   timer.running = false;
   clearInterval(timer.handle);
   $("timer-start").textContent = "Start";
+  $("timer").classList.remove("running");
 }
 $("timer-start").addEventListener("click", () => {
   if (timer.running) {
@@ -479,6 +633,7 @@ $("timer-start").addEventListener("click", () => {
     timer.startedAt = Date.now();
     timer.handle = setInterval(timerTick, 250);
     $("timer-start").textContent = "Pause";
+    $("timer").classList.add("running");
   }
   timerTick();
 });
@@ -499,9 +654,9 @@ let audTotal = null;
 let audLoading = false;
 let audRequest = 0;
 
-for (const tab of document.querySelectorAll(".tab")) {
+for (const tab of document.querySelectorAll(".seg")) {
   tab.addEventListener("click", () => {
-    for (const t of document.querySelectorAll(".tab")) t.setAttribute("aria-selected", String(t === tab));
+    for (const t of document.querySelectorAll(".seg")) t.setAttribute("aria-selected", String(t === tab));
     audKind = tab.dataset.kind;
     loadAudience(true);
   });
@@ -509,20 +664,19 @@ for (const tab of document.querySelectorAll(".tab")) {
 
 function renderAudience() {
   const q = $("aud-search").value.trim().toLowerCase();
-  const list = $("aud-list");
   const rows = audItems.filter((u) => !q || u.user_name.toLowerCase().includes(q) || u.user_login.includes(q));
-  list.replaceChildren(
+  $("aud-list").replaceChildren(
     ...rows.map((u) => {
       const li = el("li");
-      li.appendChild(el("span", null, u.user_name));
+      li.append(avatar(u.user_name, null), el("span", "who", u.user_name));
       let meta = "";
       if (audKind === "subscribers") {
         meta = tierLabel(u.tier) || u.tier;
-        if (u.is_gift) meta += u.gifter_name ? " gift from " + u.gifter_name : " gift";
+        if (u.is_gift) meta += u.gifter_name ? ", gift from " + u.gifter_name : ", gift";
       } else if (audKind === "followers" && u.followed_at) {
-        meta = new Date(u.followed_at).toLocaleDateString();
+        meta = new Date(u.followed_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
       }
-      if (meta) li.appendChild(el("span", "sub-meta", meta));
+      if (meta) li.appendChild(el("span", "meta-pill", meta));
       return li;
     })
   );
@@ -546,6 +700,7 @@ async function loadAudience(reset) {
   }
   const req = ++audRequest;
   audLoading = true;
+  $("aud-refresh").classList.add("spin");
   try {
     const page = await invoke("get_audience", { kind: audKind, cursor: reset ? null : audCursor });
     if (req !== audRequest) return;
@@ -557,6 +712,7 @@ async function loadAudience(reset) {
   } finally {
     if (req === audRequest) {
       audLoading = false;
+      $("aud-refresh").classList.remove("spin");
       renderAudience();
     }
   }
@@ -631,14 +787,15 @@ $("update-btn").addEventListener("click", async () => {
 });
 
 $("check-update").addEventListener("click", () => {
-  $("account-menu").hidden = true;
+  setMenu(false);
   checkUpdates(true);
 });
 
 // ---------- startup ----------
 
 async function start() {
-  buildFilterMenu();
+  buildChips();
+  renderFeed();
   timerTick();
 
   await listen("activity", (e) => {

@@ -155,6 +155,9 @@ pub async fn get_feed(state: State<'_, AppState>, limit: Option<u32>) -> CmdResu
 pub struct Stats {
     followers: Option<u64>,
     subscribers: Option<u64>,
+    /// New followers and subs in the current StreamElements session.
+    followers_session: Option<u64>,
+    subscribers_session: Option<u64>,
     /// `None` when Twitch is not connected; `Some(false)` when offline.
     live: Option<bool>,
     viewers: Option<u64>,
@@ -191,6 +194,8 @@ pub async fn get_stats(state: State<'_, AppState>) -> CmdResult<Stats> {
         Some(Ok(t)) => {
             out.followers = t.follower_total;
             out.subscribers = t.subscriber_total;
+            out.followers_session = t.follower_session;
+            out.subscribers_session = t.subscriber_session;
         }
         Some(Err(e)) => out.problems.push(format!("StreamElements: {}", se_err(e))),
         None => {}
