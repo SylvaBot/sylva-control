@@ -118,7 +118,7 @@
             <button class="btn" type="button" id="info-connect-btn">Connect Twitch</button>
           </div>
           <form class="info-form" id="info-form" autocomplete="off">
-            <label class="field info-title-field"><span>Title</span><input id="info-title-input" maxlength="140" spellcheck="true" placeholder="Stream title" /></label>
+            <label class="field info-title-field"><span class="field-head"><span>Title</span><span class="counter" id="title-count" aria-live="off"></span></span><input id="info-title-input" maxlength="140" spellcheck="true" placeholder="Stream title" /></label>
             <label class="field cat-field"><span>Category</span>
               <input id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
               <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
@@ -144,7 +144,7 @@
     </div>
   </div>
 
-  <div class="overlay" id="signin" hidden>
+  <div class="overlay welcome" id="signin" hidden>
     <form class="dialog" id="signin-form">
       <img src="logo.svg" alt="" width="40" height="40" />
       <h1>Sign in to Pine</h1>
@@ -164,7 +164,7 @@
         <button class="icon-btn" id="twitch-close" title="Close"><svg><use href="#i-x"/></svg></button>
       </div>
       <h1>Connect Twitch</h1>
-      <p>Optional. Pine already shows your viewer count without this. Connecting reads it straight from the Twitch API instead. You need a free Twitch app Client ID, once.</p>
+      <p>Connecting lets Pine change your stream title and category, and read your viewer count straight from Twitch. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
         <li>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</li>
         <li>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</li>

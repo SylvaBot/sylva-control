@@ -582,6 +582,10 @@ function infoChanged() {
 
 function updateSaveButton() {
   $("info-save").disabled = !infoChanged();
+  const n = $("info-title-input").value.length;
+  const count = $("title-count");
+  count.textContent = n + "/140";
+  count.classList.toggle("near", n > 120);
 }
 
 function showChannelInfo(info) {
