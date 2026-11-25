@@ -217,6 +217,64 @@ pub async fn get_viewers(state: State<'_, AppState>) -> CmdResult<Viewers> {
     Ok(Viewers { source: "public", live: count.is_some(), viewers: count })
 }
 
+async fn twitch_client_or_err(state: &AppState) -> CmdResult<std::sync::Arc<twitch::TwitchClient>> {
+    state
+        .twitch
+        .read()
+        .await
+        .clone()
+        .ok_or_else(|| "Connect Twitch first (account menu, Connect Twitch).".to_string())
+}
+
+/// Current stream title and category. `None` when Twitch is not connected.
+#[tauri::command]
+pub async fn get_channel_info(state: State<'_, AppState>) -> CmdResult<Option<twitch::ChannelInfo>> {
+    let Some(client) = state.twitch.read().await.clone() else {
+        return Ok(None);
+    };
+    client.channel_info().await.map(Some).map_err(twitch_err)
+}
+
+#[tauri::command]
+pub async fn search_categories(state: State<'_, AppState>, query: String) -> CmdResult<Vec<twitch::Category>> {
+    let query = query.trim().to_string();
+    if query.is_empty() {
+        return Ok(vec![]);
+    }
+    let client = twitch_client_or_err(&state).await?;
+    client.search_categories(&query).await.map_err(twitch_err)
+}
+
+/// Change the stream title and/or category. Needs the `channel:manage:broadcast` permission,
+/// so a Twitch connection made before this feature existed has to be reconnected once.
+#[tauri::command]
+pub async fn update_channel(
+    state: State<'_, AppState>,
+    title: Option<String>,
+    category_id: Option<String>,
+) -> CmdResult<twitch::ChannelInfo> {
+    if let Some(t) = &title {
+        if t.trim().is_empty() {
+            return Err("The title cannot be empty.".into());
+        }
+        if t.chars().count() > 140 {
+            return Err("Twitch titles can be at most 140 characters.".into());
+        }
+    }
+    let client = twitch_client_or_err(&state).await?;
+    client
+        .update_channel(title.as_deref().map(str::trim), category_id.as_deref())
+        .await
+        .map_err(|e| {
+            if e.is_unauthorized() {
+                "Twitch did not allow the change. Disconnect and connect Twitch again from the account menu so Pine can ask for permission to edit your title and category.".to_string()
+            } else {
+                e.to_string()
+            }
+        })?;
+    client.channel_info().await.map_err(twitch_err)
+}
+
 #[tauri::command]
 pub async fn alert_action(state: State<'_, AppState>, action: AlertAction) -> CmdResult<()> {
     with_se(&state, |c, ch| async move { c.alert_action(&ch, action).await }).await

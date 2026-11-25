@@ -7,8 +7,10 @@ A desktop control room for StreamElements streamers, written in Rust.
 * **Activity feed:** follows, subs, gifted subs, bits, tips, channel point and store
   redemptions, raids. Each kind is its own color and icon. Live updates, filters, one click
   alert replay.
-* **Quick actions menu:** mute or unmute alerts, pause or resume the alert queue, skip the
-  current alert, reload overlays.
+* **Quick actions:** mute or unmute alerts, pause or resume the alert queue, skip the current
+  alert, reload overlays.
+* **Stream info:** change your Twitch title and category (with category search). The fields
+  follow what is live on Twitch, refreshed every 30 seconds. Needs Twitch connected once.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
 
@@ -33,10 +35,14 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
 
 ## Updates
 
-If you run Pine from a git clone, it checks for new changes every 15 minutes. When some are
-ready, an **Update ready** button appears in the top bar. Click it and Pine closes, pulls the
-changes, rebuilds and reopens. You can also use **Check for updates** in the account menu, or
-double-click `update-and-run.bat`.
+If you run Pine from a git clone, it checks for new changes when it starts and every 15
+minutes after that. When some are ready, a notice appears and an **Update** button shows in
+the top bar. Click it and Pine downloads the changes and rebuilds itself, showing its progress,
+then restarts. No console window is involved. You can also use **Check for updates** in the
+account menu.
+
+`update-and-run.bat` does the same from a console window, which is handy for the first build.
+After that you can open `target\debug\pine.exe` directly, or pin it to the taskbar.
 
 ## Sign in
 
@@ -45,9 +51,10 @@ click **Show secrets**, copy the **JWT token** and paste it into Pine. It is sto
 system's credential store (Windows Credential Manager, macOS Keychain, or Secret Service on
 Linux). Treat it like a password.
 
-**Twitch (optional).** Pine shows your viewer count without it: it looks up your channel name
-from StreamElements on [DecAPI](https://decapi.me), a free public service. If you prefer to read
-the count straight from the Twitch API, connect Twitch from the account menu:
+**Twitch (optional, needed to change your title and category).** Pine shows your viewer count
+without it: it looks up your channel name from StreamElements on [DecAPI](https://decapi.me), a
+free public service. StreamElements has no public way to change the title or category, so
+that part goes through Twitch. Connect it from the account menu or the Stream info section:
 
 1. Go to https://dev.twitch.tv/console/apps and register an application.
 2. Set **Client Type** to **Public**. Any OAuth Redirect URL works, for example `http://localhost`.
@@ -59,7 +66,7 @@ To skip step 3 for everyone who uses your build, set `PINE_TWITCH_CLIENT_ID` whe
 ## Develop
 
 ```
-cargo test --workspace      # 17 tests: REST shapes, websocket protocol, Twitch auth, viewer count
+cargo test --workspace      # 18 tests: REST shapes, websocket protocol, Twitch auth, viewer count
 cargo clippy --workspace --all-targets
 ```
 

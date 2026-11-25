@@ -1,5 +1,5 @@
-// Hide the console window on Windows release builds.
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// Never open a console window on Windows, in debug or release builds.
+#![windows_subsystem = "windows"]
 
 mod commands;
 mod secrets;
@@ -7,6 +7,7 @@ mod state;
 mod updater;
 
 fn main() {
+    updater::clean_up_old_build();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(state::AppState::default())
@@ -17,6 +18,9 @@ fn main() {
             commands::get_feed,
             commands::get_stats,
             commands::get_viewers,
+            commands::get_channel_info,
+            commands::search_categories,
+            commands::update_channel,
             commands::alert_action,
             commands::reload_overlays,
             commands::replay_activity,

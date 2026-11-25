@@ -58,36 +58,6 @@
           <button class="btn accent" id="update-btn" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
 
           <div class="menu-wrap">
-            <button class="btn" id="qa-btn" aria-haspopup="true" aria-expanded="false">
-              <svg><use href="#i-zap"/></svg><span class="hide-sm">Quick actions</span>
-              <span class="qa-flag" id="qa-flag" hidden></span>
-              <svg class="chev"><use href="#i-chevron"/></svg>
-            </button>
-            <div class="menu qa-menu" id="qa-menu" hidden>
-              <div class="menu-title">Alert controls</div>
-              <button class="qa-item" id="act-mute" data-on="false">
-                <span class="tile"><svg><use href="#i-vol"/></svg></span>
-                <span class="qa-text"><b>Mute alerts</b><small>Alerts keep showing, without sound</small></span>
-                <span class="state">Off</span>
-              </button>
-              <button class="qa-item" id="act-pause" data-on="false">
-                <span class="tile"><svg><use href="#i-pause"/></svg></span>
-                <span class="qa-text"><b>Pause alerts</b><small>Hold new alerts in the queue</small></span>
-                <span class="state">Off</span>
-              </button>
-              <button class="qa-item" id="act-skip">
-                <span class="tile"><svg><use href="#i-skip"/></svg></span>
-                <span class="qa-text"><b>Skip alert</b><small>End the alert playing now</small></span>
-              </button>
-              <div class="menu-sep"></div>
-              <button class="qa-item" id="act-reload">
-                <span class="tile"><svg><use href="#i-layers"/></svg></span>
-                <span class="qa-text"><b>Reload overlays</b><small>Refresh every StreamElements overlay</small></span>
-              </button>
-            </div>
-          </div>
-
-          <div class="menu-wrap">
             <button class="account" id="account-btn" aria-haspopup="true" aria-expanded="false" title="Account">
               <span class="avatar" id="user-avatar"></span>
             </button>
@@ -129,6 +99,32 @@
               <b class="cell-num" id="stat-subs-session">-</b>
             </div>
           </div>
+        </section>
+
+        <section class="panel" aria-labelledby="qa-title">
+          <h2 class="panel-title" id="qa-title">Quick actions</h2>
+          <div class="qa-grid">
+            <button class="qa-btn" id="act-mute" type="button" aria-pressed="false"><svg><use href="#i-vol"/></svg><span>Mute alerts</span></button>
+            <button class="qa-btn" id="act-pause" type="button" aria-pressed="false"><svg><use href="#i-pause"/></svg><span>Pause alerts</span></button>
+            <button class="qa-btn" id="act-skip" type="button"><svg><use href="#i-skip"/></svg><span>Skip alert</span></button>
+            <button class="qa-btn" id="act-reload" type="button"><svg><use href="#i-layers"/></svg><span>Reload overlays</span></button>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="info-title">
+          <h2 class="panel-title" id="info-title">Stream info</h2>
+          <div class="info-connect" id="info-connect" hidden>
+            <p>Connect Twitch once to change your title and category from here.</p>
+            <button class="btn" type="button" id="info-connect-btn">Connect Twitch</button>
+          </div>
+          <form class="info-form" id="info-form" autocomplete="off">
+            <label class="field info-title-field"><span>Title</span><input id="info-title-input" maxlength="140" spellcheck="true" placeholder="Stream title" /></label>
+            <label class="field cat-field"><span>Category</span>
+              <input id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
+              <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
+            </label>
+            <button class="btn primary" type="submit" id="info-save" disabled>Save</button>
+          </form>
         </section>
 
         <section class="feed-card" aria-labelledby="feed-title">
@@ -181,6 +177,17 @@
         <div class="code" id="tw-user-code"></div>
         <p class="hint">Waiting for you to approve. <a href="#" id="tw-open-again">Open the page again</a> or <a href="#" id="tw-cancel">cancel</a>.</p>
       </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="update-dialog" hidden>
+    <div class="dialog" role="status" aria-live="polite">
+      <h1>Updating Pine</h1>
+      <p id="update-step">Starting</p>
+      <div class="progress" id="update-progress"><span></span></div>
+      <p class="hint" id="update-text">Pine restarts by itself when it is done. You can keep it open.</p>
+      <pre class="update-error" id="update-error" hidden></pre>
+      <button class="btn" type="button" id="update-close" hidden>Close</button>
     </div>
   </div>
 

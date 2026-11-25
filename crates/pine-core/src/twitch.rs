@@ -17,7 +17,8 @@ use tokio_util::sync::CancellationToken;
 
 pub const ID_BASE: &str = "https://id.twitch.tv";
 pub const API_BASE: &str = "https://api.twitch.tv/helix";
-pub const SCOPES: &str = "channel:read:subscriptions moderator:read:followers moderator:read:chatters";
+pub const SCOPES: &str =
+    "channel:read:subscriptions moderator:read:followers moderator:read:chatters channel:manage:broadcast";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TwitchTokens {
@@ -253,24 +254,36 @@ impl TwitchClient {
         Ok(())
     }
 
-    async fn get<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<T> {
+    async fn send(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        query: &[(&str, String)],
+        body: Option<&Value>,
+    ) -> Result<reqwest::Response> {
         for attempt in 0..2 {
             let t = self.tokens().await;
-            let resp = self
+            let mut req = self
                 .http
-                .get(format!("{}{}", self.api_base, path))
+                .request(method.clone(), format!("{}{}", self.api_base, path))
                 .query(query)
                 .header("Authorization", format!("Bearer {}", t.access_token))
-                .header("Client-Id", &t.client_id)
-                .send()
-                .await?;
+                .header("Client-Id", &t.client_id);
+            if let Some(b) = body {
+                req = req.json(b);
+            }
+            let resp = req.send().await?;
             if resp.status().as_u16() == 401 && attempt == 0 {
                 self.refresh().await?;
                 continue;
             }
-            return Ok(check(resp).await?.json().await?);
+            return check(resp).await;
         }
         unreachable!("the loop returns on its second attempt")
+    }
+
+    async fn get<T: DeserializeOwned>(&self, path: &str, query: &[(&str, String)]) -> Result<T> {
+        Ok(self.send(reqwest::Method::GET, path, query, None).await?.json().await?)
     }
 
     fn page_query(user_id: &str, first: u32, after: Option<&str>, as_moderator: bool) -> Vec<(&'static str, String)> {
@@ -316,6 +329,57 @@ impl TwitchClient {
         let q = Self::page_query(&uid, 100, after, false);
         Ok(self.get::<HelixPage<Follower>>("/channels/followers", &q).await?.into())
     }
+
+    /// Current stream title and category (Get Channel Information, no scope needed).
+    pub async fn channel_info(&self) -> Result<ChannelInfo> {
+        let uid = self.tokens().await.user_id;
+        let page: HelixPage<ChannelInfo> = self.get("/channels", &[("broadcaster_id", uid)]).await?;
+        page.data.into_iter().next().ok_or_else(|| Error::Other("Twitch returned no channel".into()))
+    }
+
+    /// Categories matching `query`, best match first (Search Categories).
+    pub async fn search_categories(&self, query: &str) -> Result<Vec<Category>> {
+        let page: HelixPage<Category> = self
+            .get("/search/categories", &[("query", query.to_string()), ("first", "8".into())])
+            .await?;
+        Ok(page.data)
+    }
+
+    /// Change the stream title and/or category (Modify Channel Information,
+    /// scope `channel:manage:broadcast`). `None` leaves that field as it is.
+    pub async fn update_channel(&self, title: Option<&str>, category_id: Option<&str>) -> Result<()> {
+        let uid = self.tokens().await.user_id;
+        let mut body = serde_json::Map::new();
+        if let Some(t) = title {
+            body.insert("title".into(), Value::String(t.to_string()));
+        }
+        if let Some(c) = category_id {
+            body.insert("game_id".into(), Value::String(c.to_string()));
+        }
+        if body.is_empty() {
+            return Ok(());
+        }
+        self.send(reqwest::Method::PATCH, "/channels", &[("broadcaster_id", uid)], Some(&Value::Object(body)))
+            .await?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChannelInfo {
+    pub title: String,
+    #[serde(default)]
+    pub game_id: String,
+    #[serde(default)]
+    pub game_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Category {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub box_art_url: String,
 }
 
 #[cfg(test)]
@@ -332,6 +396,33 @@ mod tests {
             user_id: "42".into(),
             login: "streamer".into(),
         }
+    }
+
+    #[tokio::test]
+    async fn reads_searches_and_updates_channel() {
+        let base = mock(|head, body| {
+            let first = head.lines().next().unwrap();
+            if first.starts_with("GET /helix/channels?broadcaster_id=42 ") {
+                return (200, r#"{"data":[{"broadcaster_id":"42","title":"Old title","game_id":"509658","game_name":"Just Chatting","delay":0,"tags":[]}]}"#.into());
+            }
+            if first.starts_with("GET /helix/search/categories?query=mine&first=8 ") {
+                return (200, r#"{"data":[{"id":"27471","name":"Minecraft","box_art_url":"https://x/{width}x{height}.jpg"}],"pagination":{}}"#.into());
+            }
+            if first.starts_with("PATCH /helix/channels?broadcaster_id=42 ") {
+                let v: Value = serde_json::from_str(body).unwrap();
+                assert_eq!(v, serde_json::json!({"title":"New title","game_id":"27471"}));
+                return (204, String::new());
+            }
+            (404, format!("{{\"unexpected\":\"{first}\"}}"))
+        })
+        .await;
+        let c = TwitchClient::with_bases(tokens(), None, &base, &format!("{base}/helix")).unwrap();
+        let info = c.channel_info().await.unwrap();
+        assert_eq!((info.title.as_str(), info.game_name.as_str()), ("Old title", "Just Chatting"));
+        let cats = c.search_categories("mine").await.unwrap();
+        assert_eq!(cats[0].name, "Minecraft");
+        c.update_channel(Some("New title"), Some("27471")).await.unwrap();
+        c.update_channel(None, None).await.unwrap();
     }
 
     #[tokio::test]

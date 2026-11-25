@@ -34,10 +34,10 @@ function store(key, value) {
   return null;
 }
 
-function toast(text, bad = false) {
+function toast(text, bad = false, ms = bad ? 6500 : 3000) {
   const t = el("div", "toast" + (bad ? " bad" : ""), text);
   $("toasts").appendChild(t);
-  setTimeout(() => t.remove(), bad ? 6500 : 3000);
+  setTimeout(() => t.remove(), ms);
 }
 
 const fmt = new Intl.NumberFormat();
@@ -90,10 +90,7 @@ function avatar(name, url) {
 
 // ---------- menus ----------
 
-const MENUS = [
-  ["qa-btn", "qa-menu"],
-  ["account-btn", "account-menu"],
-];
+const MENUS = [["account-btn", "account-menu"]];
 
 function closeMenus(except) {
   for (const [b, m] of MENUS) {
@@ -138,6 +135,7 @@ function applyAuth(a) {
   $("tw-signout").hidden = !a.twitch;
   $("tw-connect-menu").hidden = !!a.twitch;
   $("se-signout").hidden = !se;
+  loadChannelInfo();
 }
 
 $("signin-form").addEventListener("submit", async (e) => {
@@ -493,13 +491,18 @@ function setViewerNote(text, detail) {
 }
 
 // Viewers change all the time, so they are checked often. No Twitch sign-in is needed.
-const VIEWER_POLL_MS = 15000;
+// With Twitch connected the count comes from the official API, which is cheap to ask every
+// 5 seconds. Without it, the public lookup is asked every 10 seconds to stay polite.
+const VIEWER_POLL_MS = { twitch: 5000, public: 10000, none: 30000 };
 let viewerTimer = null;
+let viewerSource = "public";
+let viewerRun = 0;
 async function refreshViewers() {
   clearTimeout(viewerTimer);
-  viewerTimer = setTimeout(refreshViewers, VIEWER_POLL_MS);
+  const run = ++viewerRun;
   try {
     const v = await invoke("get_viewers");
+    viewerSource = v.source;
     const n = $("stat-viewers");
     if (v.source === "none") {
       n.textContent = "-";
@@ -513,12 +516,17 @@ async function refreshViewers() {
   } catch (x) {
     $("stat-viewers").textContent = "-";
     setViewerNote("Viewer count unavailable", String(x));
+  } finally {
+    // Only the latest check schedules the next one, so checks never pile up.
+    if (run === viewerRun) viewerTimer = setTimeout(refreshViewers, VIEWER_POLL_MS[viewerSource] || 10000);
   }
 }
 
 // Refresh right away when the window comes back into view.
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) refreshViewers();
+  if (document.hidden) return;
+  refreshViewers();
+  if (auth.twitch) loadChannelInfo(true);
 });
 
 // ---------- quick actions ----------
@@ -537,34 +545,196 @@ async function runAction(btn, fn, okText) {
   }
 }
 
-function updateQaFlag() {
-  const muted = $("act-mute").dataset.on === "true";
-  const paused = $("act-pause").dataset.on === "true";
-  const flag = $("qa-flag");
-  flag.hidden = !muted && !paused;
-  flag.textContent = muted && paused ? "Muted, paused" : muted ? "Muted" : "Paused";
-}
-
-function toggleItem(btn, actions, labels, icons, toasts) {
+/** A button that switches between two alert actions, such as mute and unmute. */
+function toggleButton(btn, actions, labels, icons, toasts) {
   btn.addEventListener("click", async () => {
-    const on = btn.dataset.on === "true";
+    const on = btn.getAttribute("aria-pressed") === "true";
     const ok = await runAction(btn, () => invoke("alert_action", { action: on ? actions[1] : actions[0] }), on ? toasts[1] : toasts[0]);
     if (!ok) return;
     const now = !on;
-    btn.dataset.on = String(now);
-    btn.querySelector(".state").textContent = now ? "On" : "Off";
-    btn.querySelector(".qa-text b").textContent = now ? labels[1] : labels[0];
-    btn.querySelector(".tile use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
-    updateQaFlag();
+    btn.setAttribute("aria-pressed", String(now));
+    btn.querySelector("span").textContent = now ? labels[1] : labels[0];
+    btn.querySelector("use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
   });
 }
 
-toggleItem($("act-mute"), ["mute", "unmute"], ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"], ["Alerts muted", "Alerts unmuted"]);
-toggleItem($("act-pause"), ["pause", "unpause"], ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"], ["Alerts paused", "Alerts resumed"]);
+toggleButton($("act-mute"), ["mute", "unmute"], ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"], ["Alerts muted", "Alerts unmuted"]);
+toggleButton($("act-pause"), ["pause", "unpause"], ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"], ["Alerts paused", "Alerts resumed"]);
 $("act-skip").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("alert_action", { action: "skip" }), "Skipped the current alert"));
 $("act-reload").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("reload_overlays"), "Overlays reloaded"));
+
+// ---------- stream title and category ----------
+
+// What Twitch has now, so Save only sends what changed.
+let channelInfo = null;
+// The category picked from the list: { id, name }.
+let pickedCategory = null;
+
+function infoChanged() {
+  if (!channelInfo) return false;
+  const title = $("info-title-input").value.trim();
+  const titleChanged = title !== "" && title !== channelInfo.title;
+  const catChanged = !!pickedCategory && pickedCategory.id !== channelInfo.game_id;
+  return titleChanged || catChanged;
+}
+
+function updateSaveButton() {
+  $("info-save").disabled = !infoChanged();
+}
+
+function showChannelInfo(info) {
+  channelInfo = info;
+  pickedCategory = info.game_id ? { id: info.game_id, name: info.game_name } : null;
+  $("info-title-input").value = info.title || "";
+  $("info-cat-input").value = info.game_name || "";
+  updateSaveButton();
+}
+
+async function loadChannelInfo(quiet = false) {
+  const connected = !!auth.twitch;
+  $("info-connect").hidden = connected;
+  $("info-form").hidden = !connected;
+  if (!connected) {
+    channelInfo = null;
+    return;
+  }
+  try {
+    const info = await invoke("get_channel_info");
+    if (!info) return;
+    // Mid-edit means an unsaved change, or a category search in progress.
+    const searching = document.activeElement === $("info-cat-input") && !pickedCategory;
+    if (searching || infoChanged()) {
+      // Keep what is being typed; just compare against the latest values from Twitch.
+      channelInfo = info;
+      updateSaveButton();
+    } else {
+      showChannelInfo(info);
+    }
+  } catch (x) {
+    if (!quiet) toast("Could not read your stream info: " + x, true);
+  }
+}
+
+// Keep the fields in sync with Twitch, in case the title or category is changed elsewhere.
+const INFO_POLL_MS = 30000;
+setInterval(() => {
+  if (auth.twitch && !document.hidden) loadChannelInfo(true);
+}, INFO_POLL_MS);
+
+$("info-connect-btn").addEventListener("click", openTwitchDialog);
+$("info-title-input").addEventListener("input", updateSaveButton);
+
+let catTimer = null;
+let catRequest = 0;
+let catResults = [];
+let catActive = -1;
+
+function closeCatList() {
+  $("cat-list").hidden = true;
+  $("info-cat-input").setAttribute("aria-expanded", "false");
+  catActive = -1;
+}
+
+function pickCategory(c) {
+  pickedCategory = { id: c.id, name: c.name };
+  $("info-cat-input").value = c.name;
+  closeCatList();
+  updateSaveButton();
+}
+
+function renderCatList() {
+  const list = $("cat-list");
+  if (!catResults.length) {
+    list.replaceChildren(el("li", "cat-empty", "No categories found"));
+  } else {
+    list.replaceChildren(...catResults.map((c, i) => {
+      const li = el("li", "cat-option" + (i === catActive ? " active" : ""), c.name);
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", String(i === catActive));
+      li.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        pickCategory(c);
+      });
+      return li;
+    }));
+  }
+  list.hidden = false;
+  $("info-cat-input").setAttribute("aria-expanded", "true");
+}
+
+$("info-cat-input").addEventListener("input", () => {
+  // Typing clears the earlier pick until a category is chosen from the list.
+  pickedCategory = null;
+  updateSaveButton();
+  clearTimeout(catTimer);
+  const q = $("info-cat-input").value.trim();
+  if (!q) {
+    closeCatList();
+    return;
+  }
+  catTimer = setTimeout(async () => {
+    const id = ++catRequest;
+    try {
+      const results = await invoke("search_categories", { query: q });
+      if (id !== catRequest) return;
+      catResults = results;
+      catActive = results.length ? 0 : -1;
+      renderCatList();
+    } catch (x) {
+      if (id === catRequest) toast(String(x), true);
+    }
+  }, 250);
+});
+
+$("info-cat-input").addEventListener("keydown", (e) => {
+  if ($("cat-list").hidden || !catResults.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    catActive = (catActive + step + catResults.length) % catResults.length;
+    renderCatList();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (catActive >= 0) pickCategory(catResults[catActive]);
+  } else if (e.key === "Escape") {
+    e.stopPropagation();
+    closeCatList();
+  }
+});
+
+$("info-cat-input").addEventListener("blur", () => {
+  closeCatList();
+  // Leaving the box without picking puts the current category back.
+  if (!pickedCategory && channelInfo) {
+    pickedCategory = channelInfo.game_id ? { id: channelInfo.game_id, name: channelInfo.game_name } : null;
+    $("info-cat-input").value = channelInfo.game_name || "";
+    updateSaveButton();
+  }
+});
+
+$("info-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!infoChanged()) return;
+  const title = $("info-title-input").value.trim();
+  const args = {
+    title: title !== channelInfo.title ? title : null,
+    categoryId: pickedCategory && pickedCategory.id !== channelInfo.game_id ? pickedCategory.id : null,
+  };
+  const btn = $("info-save");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  try {
+    showChannelInfo(await invoke("update_channel", args));
+    toast("Stream info updated");
+  } catch (x) {
+    toast(String(x), true);
+  } finally {
+    btn.textContent = "Save";
+    updateSaveButton();
+  }
+});
 
 // ---------- Twitch connection ----------
 
@@ -618,10 +788,16 @@ $("tw-cancel").addEventListener("click", (e) => {
 
 // ---------- updates (git checkout installs) ----------
 
+// Checked at startup and then every 15 minutes, with no action needed.
+const UPDATE_CHECK_MS = 15 * 60 * 1000;
 let updateTimer = null;
+let announcedBehind = 0;
+let updating = false;
+
 async function checkUpdates(manual = false) {
   clearTimeout(updateTimer);
-  updateTimer = setTimeout(checkUpdates, 15 * 60 * 1000);
+  updateTimer = setTimeout(checkUpdates, UPDATE_CHECK_MS);
+  if (updating) return;
   const btn = $("update-btn");
   try {
     const u = await invoke("check_for_update");
@@ -630,7 +806,11 @@ async function checkUpdates(manual = false) {
     btn.hidden = u.behind === 0;
     if (u.behind > 0) {
       btn.title = "What's new:\n" + u.changes.map((c) => "- " + c).join("\n");
-      if (manual) toast(u.behind === 1 ? "1 update is ready" : u.behind + " updates are ready");
+      // Say so once per new update, even when the check ran on its own.
+      if (manual || u.behind !== announcedBehind) {
+        toast("A Pine update is ready. Click Update at the top to install it.", false, 10000);
+      }
+      announcedBehind = u.behind;
     } else if (manual) {
       toast("Pine is up to date");
     }
@@ -640,16 +820,41 @@ async function checkUpdates(manual = false) {
   }
 }
 
+const UPDATE_STEPS = { download: "Step 1 of 3: Downloading changes", build: "Step 2 of 3: Building", restart: "Step 3 of 3: Restarting" };
+
+function showUpdateStatus(s) {
+  $("update-dialog").hidden = false;
+  const failed = s.step === "error";
+  $("update-progress").hidden = failed;
+  $("update-close").hidden = !failed;
+  $("update-error").hidden = !failed;
+  $("update-text").hidden = failed;
+  if (failed) {
+    $("update-step").textContent = "The update did not finish. Pine is still on the version you had.";
+    $("update-error").textContent = s.text;
+    return;
+  }
+  let text = UPDATE_STEPS[s.step] || s.text;
+  if (s.step === "build" && s.compiled > 0) text += " (" + s.compiled + (s.compiled === 1 ? " part" : " parts") + " done)";
+  $("update-step").textContent = text;
+}
+
 $("update-btn").addEventListener("click", async () => {
-  const btn = $("update-btn");
-  btn.disabled = true;
-  toast("Updating. Pine will close, rebuild and reopen in a minute or two.");
+  if (updating) return;
+  updating = true;
+  $("update-btn").disabled = true;
+  showUpdateStatus({ step: "download", text: "", compiled: 0 });
   try {
     await invoke("apply_update");
   } catch (x) {
-    btn.disabled = false;
-    toast(String(x), true);
+    showUpdateStatus({ step: "error", text: String(x), compiled: 0 });
   }
+});
+
+$("update-close").addEventListener("click", () => {
+  $("update-dialog").hidden = true;
+  $("update-btn").disabled = false;
+  updating = false;
 });
 
 $("check-update").addEventListener("click", () => {
@@ -667,6 +872,7 @@ async function start() {
     refreshStatsSoon();
   });
   await listen("realtime-status", (e) => setRealtime(e.payload));
+  await listen("update-status", (e) => showUpdateStatus(e.payload));
   await listen("twitch-auth", async (e) => {
     $("tw-code").hidden = true;
     $("tw-connect").disabled = false;
