@@ -3,6 +3,7 @@
 
 use pine_core::twitch::TwitchTokens;
 
+// Kept from when the app was called Pine, so saved sign-ins survive the rename.
 const SERVICE: &str = "app.pine.desktop";
 const SE_JWT: &str = "streamelements-jwt";
 const TWITCH: &str = "twitch-tokens";

@@ -1,0 +1,108 @@
+name: Release
+
+# Builds the Cortex installers and publishes them as a GitHub Release named after the version
+# in src-tauri/tauri.conf.json. Run it by pushing a tag like v0.2.0, or by hand from the
+# Actions tab (it then tags the commit it built).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            target: ""
+            bundle: target/release/bundle
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundle: target/aarch64-apple-darwin/release/bundle
+          - name: macOS (Intel)
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundle: target/x86_64-apple-darwin/release/bundle
+          - name: Linux
+            os: ubuntu-22.04
+            target: ""
+            bundle: target/release/bundle
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev libssl-dev libdbus-1-dev pkg-config patchelf xdg-utils
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the installer
+        shell: bash
+        working-directory: src-tauri
+        run: |
+          if [ -n "${{ matrix.target }}" ]; then
+            npx --yes @tauri-apps/cli@2 build --target "${{ matrix.target }}"
+          else
+            npx --yes @tauri-apps/cli@2 build
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cortex-${{ matrix.os }}-${{ matrix.target || 'native' }}
+          path: |
+            ${{ matrix.bundle }}/nsis/*.exe
+            ${{ matrix.bundle }}/msi/*.msi
+            ${{ matrix.bundle }}/dmg/*.dmg
+            ${{ matrix.bundle }}/appimage/*.AppImage
+            ${{ matrix.bundle }}/deb/*.deb
+            ${{ matrix.bundle }}/rpm/*.rpm
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the version
+        id: version
+        run: echo "tag=v$(jq -r .version src-tauri/tauri.conf.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Gather the installers
+        run: |
+          mkdir out
+          find dist -type f -exec cp {} out/ \;
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Cortex ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
+          body: |
+            Windows: download `Cortex_*_x64-setup.exe` and run it. It is not code signed yet, so if SmartScreen warns, click More info, then Run anyway.
+            macOS: the `.dmg` (`aarch64` for Apple Silicon, `x64` for Intel). Not notarized yet: the first time, right click Cortex in Applications and choose Open.
+            Linux: the `.AppImage`, `.deb` or `.rpm`.
+          files: out/*
+          fail_on_unmatched_files: true

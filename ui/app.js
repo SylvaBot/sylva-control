@@ -194,7 +194,7 @@ document.addEventListener("click", (e) => {
 // ---------- realtime status ----------
 
 function setRealtime(s) {
-  // Pine reconnects on its own, so only a rejected token needs the user's attention.
+  // Cortex reconnects on its own, so only a rejected token needs the user's attention.
   if (s.state === "unauthorized") {
     toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
   }
@@ -812,11 +812,11 @@ async function checkUpdates(manual = false) {
       btn.title = "What's new:\n" + u.changes.map((c) => "- " + c).join("\n");
       // Say so once per new update, even when the check ran on its own.
       if (manual || u.behind !== announcedBehind) {
-        toast("A Pine update is ready. Click Update at the top to install it.", false, 10000);
+        toast("A Cortex update is ready. Click Update at the top to install it.", false, 10000);
       }
       announcedBehind = u.behind;
     } else if (manual) {
-      toast("Pine is up to date");
+      toast("Cortex is up to date");
     }
   } catch (x) {
     if (manual) toast(String(x), true);
@@ -834,7 +834,7 @@ function showUpdateStatus(s) {
   $("update-error").hidden = !failed;
   $("update-text").hidden = failed;
   if (failed) {
-    $("update-step").textContent = "The update did not finish. Pine is still on the version you had.";
+    $("update-step").textContent = "The update did not finish. Cortex is still on the version you had.";
     $("update-error").textContent = s.text;
     return;
   }

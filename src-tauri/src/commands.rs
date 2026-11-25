@@ -14,8 +14,12 @@ use tokio_util::sync::CancellationToken;
 
 type CmdResult<T> = Result<T, String>;
 
-/// A Twitch Client ID baked in at build time (`PINE_TWITCH_CLIENT_ID`), if any.
-const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = option_env!("PINE_TWITCH_CLIENT_ID");
+/// A Twitch Client ID baked in at build time (`CORTEX_TWITCH_CLIENT_ID`, or the older
+/// `PINE_TWITCH_CLIENT_ID`), if any.
+const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = match option_env!("CORTEX_TWITCH_CLIENT_ID") {
+    Some(id) => Some(id),
+    None => option_env!("PINE_TWITCH_CLIENT_ID"),
+};
 
 fn se_err(e: Error) -> String {
     if e.is_unauthorized() {
@@ -267,7 +271,7 @@ pub async fn update_channel(
         .await
         .map_err(|e| {
             if e.is_unauthorized() {
-                "Twitch did not allow the change. Disconnect and connect Twitch again from the account menu so Pine can ask for permission to edit your title and category.".to_string()
+                "Twitch did not allow the change. Disconnect and connect Twitch again from the account menu so Cortex can ask for permission to edit your title and category.".to_string()
             } else {
                 e.to_string()
             }
