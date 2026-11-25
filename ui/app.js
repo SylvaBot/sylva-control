@@ -667,7 +667,7 @@ function renderAudience() {
   const rows = audItems.filter((u) => !q || u.user_name.toLowerCase().includes(q) || u.user_login.includes(q));
   $("aud-list").replaceChildren(
     ...rows.map((u) => {
-      const li = el("li");
+      const li = el("li", audKind === "chatters" ? "in-chat" : "");
       li.append(avatar(u.user_name, null), el("span", "who", u.user_name));
       let meta = "";
       if (audKind === "subscribers") {
