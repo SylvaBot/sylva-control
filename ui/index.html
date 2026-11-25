@@ -37,32 +37,53 @@
   </svg>
 
   <header class="topbar">
-    <div class="brand">
-      <img src="logo.svg" alt="" width="34" height="34" />
-      <span>Pine</span>
-    </div>
-    <label class="search">
-      <svg aria-hidden="true"><use href="#i-search"/></svg>
-      <span class="sr-only">Search activity</span>
-      <input id="feed-search" type="search" placeholder="Search activity" autocomplete="off" spellcheck="false" />
-    </label>
+    <div class="brand"><span>Pine</span></div>
     <div class="topbar-right">
       <button class="update-btn" id="update-btn" hidden>Update ready</button>
-      <span class="status" id="rt-pill" title="Live events"><span class="status-dot"></span><span class="status-text">Offline</span></span>
       <button class="user-pill" id="account-btn" aria-haspopup="true" aria-expanded="false">
         <span class="avatar" id="user-avatar"></span>
         <span id="user-name">Not signed in</span>
       </button>
       <div class="menu" id="account-menu" hidden>
         <div class="menu-row"><span class="muted">StreamElements</span><span id="menu-se-name">-</span></div>
-        <div class="menu-row"><span class="muted">Twitch</span><span id="menu-tw-name">Not connected</span></div>
         <div class="menu-sep"></div>
         <button id="check-update" hidden>Check for updates</button>
-        <button id="tw-signout">Disconnect Twitch</button>
         <button id="se-signout">Sign out of StreamElements</button>
       </div>
     </div>
   </header>
+
+  <section class="stage" aria-label="Stream">
+    <div class="stage-stats">
+      <div class="stage-stat">
+        <span class="stage-label">Viewers</span>
+        <span class="stage-num" id="stat-viewers">-</span>
+      </div>
+      <div class="stage-stat">
+        <span class="stage-label">Followers</span>
+        <span class="stage-num" id="stat-followers">-</span>
+      </div>
+      <div class="stage-stat">
+        <span class="stage-label">Subs</span>
+        <span class="stage-num" id="stat-subs">-</span>
+      </div>
+    </div>
+    <div class="stage-actions">
+      <button class="action" id="act-mute" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-mute"/></svg></span><span class="action-label">Mute</span></button>
+      <button class="action" id="act-pause" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-pause"/></svg></span><span class="action-label">Pause</span></button>
+      <button class="action" id="act-skip"><span class="action-icon"><svg aria-hidden="true"><use href="#i-skip"/></svg></span><span class="action-label">Skip</span></button>
+      <button class="action" id="act-reload"><span class="action-icon"><svg aria-hidden="true"><use href="#i-layers"/></svg></span><span class="action-label">Reload</span></button>
+      <div class="timer" id="timer">
+        <span class="action-icon" title="Timer"><svg aria-hidden="true"><use href="#i-timer"/></svg></span>
+        <div class="timer-display" id="timer-display">00:00</div>
+        <div class="timer-controls">
+          <label class="mins"><span class="sr-only">Countdown minutes</span><input id="timer-minutes" type="number" min="0" max="999" value="0" title="Countdown minutes. 0 counts up." /><span>min</span></label>
+          <button class="pill-btn" id="timer-start">Start</button>
+          <button class="pill-btn ghost" id="timer-reset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <main class="layout">
     <section class="panel feed-panel" aria-labelledby="feed-title">
@@ -76,123 +97,10 @@
       <ol class="feed" id="feed" aria-live="polite"></ol>
       <p class="empty" id="feed-empty" hidden></p>
     </section>
-
-    <section class="panel side-panel" aria-labelledby="ov-title">
-      <div class="panel-head">
-        <h2 id="ov-title">Overview</h2>
-        <div class="panel-tools">
-          <span class="live-chip" id="live-pill" hidden>Offline</span>
-          <button class="round" id="stats-refresh" title="Refresh numbers"><svg aria-hidden="true"><use href="#i-refresh"/></svg></button>
-        </div>
-      </div>
-
-      <div class="side-scroll">
-        <div class="stat-grid">
-          <article class="card stat-card">
-            <div class="card-top"><span class="tag">Viewers</span><span class="icon-dot c-sky"><svg aria-hidden="true"><use href="#i-eye"/></svg></span></div>
-            <div class="big" id="stat-viewers">-</div>
-            <div class="subs"><div class="sub"><span>Status</span><b id="sub-status">-</b></div><div class="sub"><span>Source</span><b>Twitch</b></div></div>
-          </article>
-          <article class="card stat-card">
-            <div class="card-top"><span class="tag">Chatters</span><span class="icon-dot c-butter"><svg aria-hidden="true"><use href="#i-chat"/></svg></span></div>
-            <div class="big" id="stat-chatters">-</div>
-            <div class="subs"><div class="sub"><span>Updated</span><b id="sub-updated">-</b></div><div class="sub"><span>Source</span><b>Twitch</b></div></div>
-          </article>
-          <article class="card stat-card">
-            <div class="card-top"><span class="tag">Followers</span><span class="icon-dot c-mint"><svg aria-hidden="true"><use href="#i-heart"/></svg></span></div>
-            <div class="big" id="stat-followers">-</div>
-            <div class="subs"><div class="sub"><span>This stream</span><b id="sub-followers">-</b></div><div class="sub"><span>Source</span><b>StreamElements</b></div></div>
-          </article>
-          <article class="card stat-card">
-            <div class="card-top"><span class="tag">Subscribers</span><span class="icon-dot c-lavender"><svg aria-hidden="true"><use href="#i-star"/></svg></span></div>
-            <div class="big" id="stat-subs">-</div>
-            <div class="subs"><div class="sub"><span>This stream</span><b id="sub-subs">-</b></div><div class="sub"><span>Source</span><b>StreamElements</b></div></div>
-          </article>
-        </div>
-
-        <article class="card chart-card">
-          <div class="card-top"><span class="tag">Last 12 hours</span><span class="icon-dot c-coral"><svg aria-hidden="true"><use href="#i-chart"/></svg></span></div>
-          <div class="bars" id="bars" aria-hidden="true"></div>
-          <div class="chart-foot">
-            <div class="big" id="events-total">0</div>
-            <div class="big-caption">events in the last 12 hours</div>
-          </div>
-          <div class="subs three">
-            <div class="sub"><span>Follows</span><b id="sum-follows">0</b></div>
-            <div class="sub"><span>Subs and gifts</span><b id="sum-subs">0</b></div>
-            <div class="sub"><span>Bits</span><b id="sum-bits">0</b></div>
-          </div>
-        </article>
-
-        <article class="card">
-          <div class="card-top"><span class="tag">Quick actions</span><span class="icon-dot c-pink"><svg aria-hidden="true"><use href="#i-bolt"/></svg></span></div>
-          <div class="actions">
-            <button class="action" id="act-mute" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-mute"/></svg></span><span class="action-label">Mute alerts</span></button>
-            <button class="action" id="act-pause" data-on="false"><span class="action-icon"><svg aria-hidden="true"><use href="#i-pause"/></svg></span><span class="action-label">Pause alerts</span></button>
-            <button class="action" id="act-skip"><span class="action-icon"><svg aria-hidden="true"><use href="#i-skip"/></svg></span><span class="action-label">Skip alert</span></button>
-            <button class="action" id="act-reload"><span class="action-icon"><svg aria-hidden="true"><use href="#i-layers"/></svg></span><span class="action-label">Reload overlays</span></button>
-            <div class="timer" id="timer">
-              <div class="timer-head"><span class="action-icon"><svg aria-hidden="true"><use href="#i-timer"/></svg></span><span class="action-label">Timer</span></div>
-              <div class="timer-display" id="timer-display">00:00</div>
-              <div class="timer-controls">
-                <label class="mins"><span class="sr-only">Countdown minutes</span><input id="timer-minutes" type="number" min="0" max="999" value="0" title="Countdown minutes. 0 counts up." /><span>min</span></label>
-                <button class="pill-btn" id="timer-start">Start</button>
-                <button class="pill-btn ghost" id="timer-reset">Reset</button>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <article class="card audience-card">
-          <div class="card-top">
-            <span class="tag">Audience</span>
-            <div class="card-tools">
-              <button class="round small" id="aud-refresh" title="Refresh list"><svg aria-hidden="true"><use href="#i-refresh"/></svg></button>
-              <span class="icon-dot c-sand"><svg aria-hidden="true"><use href="#i-users"/></svg></span>
-            </div>
-          </div>
-          <div class="segmented" role="tablist">
-            <button role="tab" class="seg" data-kind="subscribers" aria-selected="true">Subscribers</button>
-            <button role="tab" class="seg" data-kind="followers" aria-selected="false">Followers</button>
-            <button role="tab" class="seg" data-kind="chatters" aria-selected="false">Chatters</button>
-          </div>
-
-          <div id="aud-connect" class="connect" hidden>
-            <div class="connect-head"><span class="icon-dot c-lavender"><svg aria-hidden="true"><use href="#i-twitch"/></svg></span><p>Connect Twitch to see your subscribers, followers, chatters and live viewer count.</p></div>
-            <label class="field">
-              <span>Twitch Client ID</span>
-              <input id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="From dev.twitch.tv/console/apps" />
-            </label>
-            <button class="primary" id="tw-connect">Connect Twitch</button>
-            <p class="hint">Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a> with Client Type <b>Public</b>. Any OAuth redirect URL works, for example http://localhost.</p>
-            <div id="tw-code" class="device-code" hidden>
-              <p>Enter this code on the Twitch page that just opened:</p>
-              <div class="code" id="tw-user-code"></div>
-              <p class="hint">Waiting for approval. <a href="#" id="tw-open-again">Open the page again</a> or <a href="#" id="tw-cancel">cancel</a>.</p>
-            </div>
-          </div>
-
-          <div id="aud-body">
-            <div class="aud-tools">
-              <label class="search small">
-                <svg aria-hidden="true"><use href="#i-search"/></svg>
-                <span class="sr-only">Search loaded names</span>
-                <input id="aud-search" type="search" placeholder="Search names" autocomplete="off" spellcheck="false" />
-              </label>
-              <span class="aud-total" id="aud-total"></span>
-            </div>
-            <ul class="aud-list" id="aud-list"></ul>
-            <button class="pill-btn ghost more" id="aud-more" hidden>Load more</button>
-            <p class="empty" id="aud-empty" hidden></p>
-          </div>
-        </article>
-      </div>
-    </section>
   </main>
 
   <div class="overlay" id="signin" hidden>
     <form class="dialog" id="signin-form">
-      <img src="logo.svg" alt="" width="52" height="52" />
       <h1>Welcome to Pine</h1>
       <p>Sign in with your StreamElements JWT token. Find it in the dashboard under <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account, Channels</a>. Click the copy icon next to <b>JWT Token</b>.</p>
       <label for="se-token" class="sr-only">JWT token</label>
