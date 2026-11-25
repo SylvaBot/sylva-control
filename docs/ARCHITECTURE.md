@@ -1,7 +1,7 @@
 # Pine architecture
 
 Pine is a desktop control room for streamers who use StreamElements: a live activity
-feed, alert quick actions, and an audience panel (subscribers, followers, viewers, chatters).
+feed, alert quick actions, and live numbers (viewers, followers, subscribers).
 
 ## Stack and why
 
@@ -87,7 +87,7 @@ token refresh and the device code polling.
 
 ## Roadmap
 
-1. **Now:** sign-in, live feed with filters, quick actions, stats header, audience lists.
+1. **Now:** sign-in, live feed with filters, quick actions menu, live numbers card.
 2. **Next:** read the current mute and pause state at startup (the Astro overlay topics are
    the likely source), desktop notifications for selected event types, minimum amount
    filters (bits, tips, months), and a compact always on top mode.

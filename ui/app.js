@@ -46,12 +46,13 @@ function num(n) {
 }
 
 function ago(iso) {
-  if (!iso) return "";
-  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  const s = Math.max(0, (Date.now() - t) / 1000);
   if (s < 60) return "now";
-  if (s < 3600) return Math.floor(s / 60) + "m";
-  if (s < 86400) return Math.floor(s / 3600) + "h";
-  return Math.floor(s / 86400) + "d";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
 }
 
 function tierLabel(tier) {
@@ -70,23 +71,14 @@ function safeImg(url) {
   return typeof url === "string" && url.startsWith("https://") ? url : null;
 }
 
-const MONO_COLORS = ["c-mint", "c-lavender", "c-pink", "c-sky", "c-butter", "c-coral", "c-sand"];
-function monoColor(name) {
-  let h = 0;
-  for (const ch of name || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return MONO_COLORS[h % MONO_COLORS.length];
-}
-
-/** Round avatar: the image when we have a safe URL, otherwise the first letter. */
-function avatar(name, url, colorClass) {
-  const a = el("span", "avatar " + (colorClass || monoColor(name)));
+function avatar(name, url) {
+  const a = el("span", "avatar");
   const letter = (name || "?").trim().charAt(0).toUpperCase() || "?";
   const src = safeImg(url);
   if (src) {
     const img = el("img");
     img.src = src;
     img.alt = "";
-    img.loading = "lazy";
     img.referrerPolicy = "no-referrer";
     img.onerror = () => { img.remove(); a.textContent = letter; };
     a.appendChild(img);
@@ -96,6 +88,38 @@ function avatar(name, url, colorClass) {
   return a;
 }
 
+// ---------- menus ----------
+
+const MENUS = [
+  ["qa-btn", "qa-menu"],
+  ["account-btn", "account-menu"],
+];
+
+function closeMenus(except) {
+  for (const [b, m] of MENUS) {
+    if (m === except) continue;
+    $(m).hidden = true;
+    $(b).setAttribute("aria-expanded", "false");
+  }
+}
+
+for (const [b, m] of MENUS) {
+  $(b).addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = $(m).hidden;
+    closeMenus(m);
+    $(m).hidden = !open;
+    $(b).setAttribute("aria-expanded", String(open));
+  });
+  $(m).addEventListener("click", (e) => e.stopPropagation());
+}
+document.addEventListener("click", () => closeMenus());
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  closeMenus();
+  if (!$("twitch-dialog").hidden) closeTwitchDialog();
+});
+
 // ---------- auth ----------
 
 let auth = { streamelements: null, twitch: null, defaultTwitchClientId: null };
@@ -104,10 +128,15 @@ function applyAuth(a) {
   auth = a;
   const se = a.streamelements;
   $("signin").hidden = !!se;
-  const name = se ? se.displayName || se.username || "Streamer" : "Not signed in";
-  $("user-name").textContent = name;
-  $("user-avatar").replaceWith(Object.assign(avatar(name, se && se.avatar, "c-mint"), { id: "user-avatar" }));
+  const name = se ? se.displayName || se.username || "Streamer" : "";
+  $("brand-channel").textContent = name;
+  const av = avatar(name || "?", se && se.avatar);
+  av.id = "user-avatar";
+  $("user-avatar").replaceWith(av);
   $("menu-se-name").textContent = se ? name : "-";
+  $("menu-tw-name").textContent = a.twitch ? a.twitch.login : "Not connected";
+  $("tw-signout").hidden = !a.twitch;
+  $("tw-connect-menu").hidden = !!a.twitch;
   $("se-signout").hidden = !se;
   if (!se) setRealtime({ state: "stopped" });
 }
@@ -123,9 +152,10 @@ $("signin-form").addEventListener("submit", async (e) => {
     const a = await invoke("se_sign_in", { token: $("se-token").value });
     $("se-token").value = "";
     applyAuth(a);
+    toast("Signed in as " + (a.streamelements.displayName || a.streamelements.username));
     await loadFeed();
     refreshStats();
-    toast("Signed in as " + (a.streamelements.displayName || a.streamelements.username));
+    refreshViewers();
   } catch (x) {
     err.textContent = String(x);
     err.hidden = false;
@@ -135,28 +165,23 @@ $("signin-form").addEventListener("submit", async (e) => {
   }
 });
 
-function setMenu(open) {
-  $("account-menu").hidden = !open;
-  $("account-btn").setAttribute("aria-expanded", String(open));
-}
-$("account-btn").addEventListener("click", (e) => {
-  e.stopPropagation();
-  setMenu($("account-menu").hidden);
-});
-document.addEventListener("click", (e) => {
-  if (!$("account-menu").contains(e.target)) setMenu(false);
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") setMenu(false);
-});
-
 $("se-signout").addEventListener("click", async () => {
-  setMenu(false);
+  closeMenus();
   try {
     applyAuth(await invoke("se_sign_out"));
     feed = [];
     renderFeed();
     resetStats();
+  } catch (x) {
+    toast(String(x), true);
+  }
+});
+
+$("tw-signout").addEventListener("click", async () => {
+  closeMenus();
+  try {
+    applyAuth(await invoke("twitch_sign_out"));
+    refreshViewers();
   } catch (x) {
     toast(String(x), true);
   }
@@ -172,170 +197,207 @@ document.addEventListener("click", (e) => {
 // ---------- realtime status ----------
 
 function setRealtime(s) {
-  if (s.state === "unauthorized") {
-    toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
+  const p = $("rt-pill");
+  const text = p.querySelector(".conn-text");
+  p.classList.remove("ok", "warn", "bad");
+  p.title = "Live events";
+  switch (s.state) {
+    case "connecting":
+    case "connected":
+      text.textContent = "Connecting";
+      p.classList.add("warn");
+      break;
+    case "live":
+      text.textContent = "Connected";
+      p.title = "Live events are streaming in";
+      p.classList.add("ok");
+      break;
+    case "reconnecting":
+      text.textContent = "Reconnecting";
+      p.title = (s.reason || "Connection lost") + ". Retrying in " + s.inSecs + "s.";
+      p.classList.add("warn");
+      break;
+    case "unauthorized":
+      text.textContent = "Disconnected";
+      p.title = s.message || "";
+      p.classList.add("bad");
+      toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
+      break;
+    default:
+      text.textContent = "Offline";
   }
 }
 
 // ---------- activity feed ----------
 
 const GROUPS = [
-  { id: "follow", label: "Follows", color: "c-mint", icon: "i-heart", kinds: ["follow"] },
-  { id: "sub", label: "Subs", color: "c-lavender", icon: "i-star", kinds: ["subscriber"] },
-  { id: "gift", label: "Gifts", color: "c-pink", icon: "i-gift", kinds: ["giftedSub", "communityGift"] },
-  { id: "cheer", label: "Bits", color: "c-sky", icon: "i-gem", kinds: ["cheer"] },
-  { id: "tip", label: "Tips", color: "c-butter", icon: "i-coin", kinds: ["tip"] },
-  { id: "redemption", label: "Rewards", color: "c-coral", icon: "i-bolt", kinds: ["redemption"] },
-  { id: "raid", label: "Raids", color: "c-sand", icon: "i-flag", kinds: ["raid", "host"] },
-  { id: "other", label: "Other", color: "c-slate", icon: "i-dot", kinds: ["other"] },
+  { id: "follow", label: "Follows", color: "c-follow", icon: "i-heart", kinds: ["follow"] },
+  { id: "sub", label: "Subs", color: "c-sub", icon: "i-star", kinds: ["subscriber"] },
+  { id: "gift", label: "Gifts", color: "c-gift", icon: "i-gift", kinds: ["giftedSub", "communityGift"] },
+  { id: "cheer", label: "Bits", color: "c-bits", icon: "i-gem", kinds: ["cheer"] },
+  { id: "tip", label: "Tips", color: "c-tip", icon: "i-tip", kinds: ["tip"] },
+  { id: "redemption", label: "Rewards", color: "c-reward", icon: "i-sparkles", kinds: ["redemption"] },
+  { id: "raid", label: "Raids", color: "c-raid", icon: "i-swords", kinds: ["raid", "host"] },
+  { id: "other", label: "Other", color: "c-other", icon: "i-dot", kinds: ["other"] },
 ];
+const KNOWN_KINDS = new Set(GROUPS.flatMap((g) => g.kinds));
 const MAX_ITEMS = 500;
+const DAY = 86400000;
 
 let feed = [];
-// Groups the user picked. Empty means "All".
+// Groups the user picked. Empty means everything.
 let shown = new Set((store("shownGroups") || []).filter((g) => GROUPS.some((x) => x.id === g)));
 
 function groupOf(kind) {
   return GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[GROUPS.length - 1];
 }
 
-function buildChips() {
-  const wrap = $("feed-chips");
-  wrap.replaceChildren();
-  const all = el("button", "chip all");
+function last24(a) {
+  return Date.now() - Date.parse(a.createdAt) < DAY;
+}
+
+/** Filter buttons with counts, and the colored mix bar for the last 24 hours. */
+function renderSummary() {
+  const counts = Object.fromEntries(GROUPS.map((g) => [g.id, 0]));
+  let total = 0;
+  for (const a of feed) {
+    if (!last24(a)) continue;
+    counts[groupOf(a.kind).id]++;
+    total++;
+  }
+
+  const mix = $("mix");
+  mix.classList.toggle("empty", total === 0);
+  if (total === 0) {
+    const s = el("span");
+    s.style.flexGrow = "1";
+    mix.replaceChildren(s);
+  } else {
+    mix.replaceChildren(
+      ...GROUPS.filter((g) => counts[g.id] > 0).map((g) => {
+        const s = el("span", g.color);
+        s.style.flexGrow = String(counts[g.id]);
+        s.title = num(counts[g.id]) + " " + g.label.toLowerCase();
+        return s;
+      })
+    );
+  }
+  $("mix-label").textContent = total === 1 ? "1 event in the last 24 hours" : num(total) + " events in the last 24 hours";
+
+  const all = el("button", "filter");
   all.type = "button";
   all.setAttribute("aria-pressed", String(shown.size === 0));
-  all.append(icon("i-grid"), document.createTextNode("All"));
+  all.append(document.createTextNode("All"), el("span", "count", num(total)));
   all.addEventListener("click", () => {
     shown.clear();
     store("shownGroups", []);
-    buildChips();
     renderFeed();
   });
-  wrap.appendChild(all);
+  const buttons = [all];
   for (const g of GROUPS) {
-    const c = el("button", "chip " + g.color);
-    c.type = "button";
-    c.setAttribute("aria-pressed", String(shown.has(g.id)));
-    c.append(icon(g.icon), document.createTextNode(g.label));
-    c.addEventListener("click", () => {
+    if (g.id === "other" && counts.other === 0 && !shown.has("other")) continue;
+    const b = el("button", "filter " + g.color);
+    b.type = "button";
+    b.title = "Show " + g.label.toLowerCase() + " (click more than one to combine)";
+    b.setAttribute("aria-pressed", String(shown.has(g.id)));
+    b.append(el("span", "bar"), document.createTextNode(g.label), el("span", "count", num(counts[g.id])));
+    b.addEventListener("click", () => {
       if (shown.has(g.id)) shown.delete(g.id);
       else shown.add(g.id);
       store("shownGroups", [...shown]);
-      buildChips();
       renderFeed();
     });
-    wrap.appendChild(c);
+    buttons.push(b);
   }
+  $("filters").replaceChildren(...buttons);
 }
 
+/**
+ * One sentence that says what happened, with names in bold, plus small pills
+ * for the details (tier, months).
+ */
 function describe(a) {
-  // who, to, kind label, optional big headline {num, unit}, optional caption parts, extra sub boxes
   const name = a.displayName || a.username || "Someone";
+  const n = a.amount;
+  const has = n !== null && n !== undefined;
+  const plural = (one, many) => (n === 1 ? one : many);
   const tier = tierLabel(a.tier);
-  const out = { who: name, to: null, kind: "", headline: null, caption: null, extra: [] };
-  const plural = (n, one, many) => (n === 1 ? one : many);
+  const parts = [];
+  const pills = [];
+  let message = a.message;
+  const b = (t) => parts.push(el("b", null, t));
+  const t = (s) => parts.push(document.createTextNode(s));
+
   switch (a.kind) {
     case "follow":
-      out.kind = "Follow";
-      out.caption = ["Started following"];
+      b(name); t(" followed");
       break;
     case "subscriber":
-      out.kind = "Subscription";
-      if (a.amount != null && a.amount > 1) {
-        out.headline = { num: num(a.amount), unit: "months" };
-      } else {
-        out.caption = ["New subscriber"];
-      }
-      if (tier) out.extra.push(["Tier", tier.replace("Tier ", "")]);
+      b(name); t(has && n > 1 ? " resubscribed" : " subscribed");
+      if (tier) pills.push(tier);
+      if (has && n > 1) pills.push(num(n) + " months");
       break;
     case "giftedSub":
-      out.kind = "Gift";
-      out.who = a.sender || "Anonymous";
-      out.to = name;
-      out.caption = tier ? ["Gifted a ", { b: tier }, " sub"] : ["Gifted a sub"];
+      b(a.sender || "Anonymous"); t(" gifted a sub to "); b(name);
+      if (tier) pills.push(tier);
+      // StreamElements fills in an automatic "X gifted a sub to Y" message; the sentence already says it.
+      if (/gift/i.test(message || "")) message = null;
       break;
     case "communityGift":
-      out.kind = "Gift subs";
-      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "gift sub", "gift subs") };
+      b(name); t(has ? " gifted " + num(n) + " " + plural("sub", "subs") : " gifted subs");
+      if (tier) pills.push(tier);
+      if (/gift/i.test(message || "")) message = null;
       break;
     case "cheer":
-      out.kind = "Bits";
-      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "bit", "bits") };
+      b(name); t(has ? " cheered " + num(n) + " " + plural("bit", "bits") : " cheered");
       break;
     case "tip":
-      out.kind = "Tip";
-      if (a.amount != null) out.headline = { num: money(a.amount, a.currency), unit: "" };
+      b(name); t(has ? " tipped " + money(n, a.currency) : " tipped");
       break;
     case "redemption":
-      out.kind = "Reward";
-      out.caption = a.redemption ? ["Redeemed ", { b: a.redemption }] : ["Redeemed a reward"];
+      b(name); t(" redeemed "); b(a.redemption || "a reward");
       break;
     case "raid":
-      out.kind = "Raid";
-      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "raider", "raiders") };
+      b(name); t(has ? " raided with " + num(n) + " " + plural("viewer", "viewers") : " raided");
       break;
     case "host":
-      out.kind = "Host";
-      if (a.amount != null) out.headline = { num: num(a.amount), unit: plural(a.amount, "viewer", "viewers") };
+      b(name); t(has ? " hosted with " + num(n) + " " + plural("viewer", "viewers") : " hosted");
       break;
     default:
-      out.kind = a.rawType;
+      b(name);
+      if (a.rawType) pills.push(a.rawType);
   }
-  return out;
+  return { parts, pills, message };
 }
 
 function renderItem(a, fresh) {
   const g = groupOf(a.kind);
   const d = describe(a);
-  const li = el("li", "item k-" + a.kind + " " + g.color + (fresh ? " fresh" : ""));
+  const kind = KNOWN_KINDS.has(a.kind) ? a.kind : "other";
+  const li = el("li", "item k-" + kind + (fresh ? " fresh" : ""));
   li.dataset.id = a.id;
 
-  const top = el("div", "item-top");
-  const pill = el("span", "name-pill");
-  pill.appendChild(avatar(d.who, d.to ? null : a.avatar, g.color));
-  const names = el("span", "names", d.who);
-  if (d.to) {
-    names.appendChild(el("span", "to", " to "));
-    names.appendChild(document.createTextNode(d.to));
+  const tile = el("span", "tile");
+  tile.appendChild(icon(g.icon));
+
+  const main = el("div", "item-main");
+  const title = el("div", "item-title");
+  title.append(...d.parts);
+  main.appendChild(title);
+  if (d.message) main.appendChild(el("p", "item-msg", d.message));
+  if (d.pills.length) {
+    const pills = el("div", "pills");
+    for (const p of d.pills) pills.appendChild(el("span", "pill", p));
+    main.appendChild(pills);
   }
-  pill.appendChild(names);
-  const kind = el("span", "kind", d.kind);
+
+  const side = el("div", "item-side");
   const time = el("time", null, ago(a.createdAt));
   if (a.createdAt) {
     time.dateTime = a.createdAt;
     time.title = new Date(a.createdAt).toLocaleString();
   }
-  const dot = el("span", "icon-dot " + g.color);
-  dot.appendChild(icon(g.icon));
-  top.append(pill, kind, el("span", "spacer"), time, dot);
-  li.appendChild(top);
-
-  if (d.headline) {
-    const h = el("div", "headline");
-    h.appendChild(el("span", "num", d.headline.num));
-    if (d.headline.unit) h.appendChild(el("span", "unit", d.headline.unit));
-    li.appendChild(h);
-  }
-  if (d.caption) {
-    const c = el("p", "caption");
-    for (const part of d.caption) {
-      c.appendChild(typeof part === "string" ? document.createTextNode(part) : el("b", null, part.b));
-    }
-    li.appendChild(c);
-  }
-  // Gifted subs carry an auto-generated "X gifted a sub to Y" message that repeats the caption.
-  const autoGiftText = a.kind === "giftedSub" && /gift/i.test(a.message || "");
-  if (a.message && !autoGiftText) li.appendChild(el("p", "msg", a.message));
-  if (d.extra.length) {
-    const meta = el("div", "meta");
-    for (const [k, v] of d.extra) {
-      const s = el("div", "sub");
-      s.append(el("span", null, k), el("b", null, v));
-      meta.appendChild(s);
-    }
-    li.appendChild(meta);
-  }
+  side.appendChild(time);
 
   const replay = el("button", "replay");
   replay.type = "button";
@@ -352,7 +414,8 @@ function renderItem(a, fresh) {
       replay.disabled = false;
     }
   });
-  li.appendChild(replay);
+
+  li.append(tile, main, side, replay);
   return li;
 }
 
@@ -366,8 +429,9 @@ function renderFeed() {
   const empty = $("feed-empty");
   empty.hidden = items.length > 0;
   empty.textContent = feed.length
-    ? "Nothing matches this filter."
-    : "No activity yet. Follows, subs, bits and rewards will appear here as they happen.";
+    ? "Nothing here for this filter yet."
+    : "No activity yet. Follows, subs, bits and rewards appear here the moment they happen.";
+  renderSummary();
 }
 
 function addLive(a) {
@@ -380,6 +444,7 @@ function addLive(a) {
     if (extra) extra.remove();
     $("feed-empty").hidden = true;
   }
+  renderSummary();
 }
 
 async function loadFeed() {
@@ -390,7 +455,7 @@ async function loadFeed() {
     const history = await invoke("get_feed", { limit: 250 });
     const known = new Set(history.map((a) => a.id));
     // Keep live items that arrived while history was loading.
-    feed = feed.filter((a) => !known.has(a.id)).concat(history);
+    feed = feed.filter((a) => !known.has(a.id)).concat(history).slice(0, MAX_ITEMS);
     renderFeed();
   } catch (x) {
     toast("Could not load activity: " + x, true);
@@ -403,25 +468,37 @@ $("feed-refresh").addEventListener("click", loadFeed);
 
 setInterval(() => {
   for (const t of document.querySelectorAll("#feed time[datetime]")) t.textContent = ago(t.dateTime);
-}, 60000);
+  renderSummary();
+}, 30000);
 
-// ---------- stats ----------
+// ---------- numbers ----------
 
 function resetStats() {
-  for (const id of ["stat-viewers", "stat-followers", "stat-subs"]) $(id).textContent = "-";
+  for (const id of ["stat-viewers", "stat-followers", "stat-subs", "stat-followers-session", "stat-subs-session"]) {
+    $(id).textContent = "-";
+    $(id).classList.remove("up");
+  }
+  setBadge("off", "Offline");
+}
+
+function setSession(id, n) {
+  const e = $(id);
+  e.textContent = n === null || n === undefined ? "-" : "+" + num(n);
+  e.classList.toggle("up", !!n);
+  e.title = "New since the stream started";
 }
 
 let statsTimer = null;
 async function refreshStats() {
   clearTimeout(statsTimer);
-  statsTimer = setTimeout(refreshStats, 30000);
-  if (!auth.streamelements && !auth.twitch) return;
+  statsTimer = setTimeout(refreshStats, 60000);
+  if (!auth.streamelements) return;
   try {
     const s = await invoke("get_stats");
-    $("stat-viewers").textContent = num(s.viewers);
     $("stat-followers").textContent = num(s.followers);
     $("stat-subs").textContent = num(s.subscribers);
-    if (s.problems.length) console.warn(s.problems.join("\n"));
+    setSession("stat-followers-session", s.followersSession);
+    setSession("stat-subs-session", s.subscribersSession);
   } catch (x) {
     console.warn(x);
   }
@@ -432,6 +509,43 @@ function refreshStatsSoon() {
   clearTimeout(statsSoon);
   statsSoon = setTimeout(refreshStats, 3000);
 }
+
+/** The pill next to the viewer count: Live or Offline. */
+function setBadge(state, text) {
+  const badge = $("viewer-badge");
+  badge.className = "badge" + (state === "live" ? " live" : "");
+  badge.title = "";
+  badge.querySelector(".badge-text").textContent = text;
+}
+
+// Viewers change all the time, so they are checked often. No Twitch sign-in is needed.
+const VIEWER_POLL_MS = 15000;
+let viewerTimer = null;
+async function refreshViewers() {
+  clearTimeout(viewerTimer);
+  viewerTimer = setTimeout(refreshViewers, VIEWER_POLL_MS);
+  try {
+    const v = await invoke("get_viewers");
+    const n = $("stat-viewers");
+    if (v.source === "none") {
+      n.textContent = "-";
+      n.title = "";
+      setBadge("off", auth.streamelements ? "No Twitch channel" : "Offline");
+      return;
+    }
+    n.textContent = v.live ? num(v.viewers) : "0";
+    n.title = "Checked at " + new Date().toLocaleTimeString();
+    setBadge(v.live ? "live" : "off", v.live ? "Live" : "Offline");
+  } catch (x) {
+    setBadge("off", "Viewer count unavailable");
+    $("viewer-badge").title = String(x);
+  }
+}
+
+// Refresh right away when the window comes back into view.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshViewers();
+});
 
 // ---------- quick actions ----------
 
@@ -449,74 +563,84 @@ async function runAction(btn, fn, okText) {
   }
 }
 
-function toggleButton(btn, onAction, offAction, onLabel, offLabel, onToast, offToast) {
+function updateQaFlag() {
+  const muted = $("act-mute").dataset.on === "true";
+  const paused = $("act-pause").dataset.on === "true";
+  const flag = $("qa-flag");
+  flag.hidden = !muted && !paused;
+  flag.textContent = muted && paused ? "Muted, paused" : muted ? "Muted" : "Paused";
+}
+
+function toggleItem(btn, actions, labels, icons, toasts) {
   btn.addEventListener("click", async () => {
     const on = btn.dataset.on === "true";
-    const ok = await runAction(btn, () => invoke("alert_action", { action: on ? offAction : onAction }), on ? offToast : onToast);
-    if (ok) {
-      btn.dataset.on = String(!on);
-      btn.querySelector(".action-label").textContent = on ? offLabel : onLabel;
-    }
+    const ok = await runAction(btn, () => invoke("alert_action", { action: on ? actions[1] : actions[0] }), on ? toasts[1] : toasts[0]);
+    if (!ok) return;
+    const now = !on;
+    btn.dataset.on = String(now);
+    btn.querySelector(".state").textContent = now ? "On" : "Off";
+    btn.querySelector(".qa-text b").textContent = now ? labels[1] : labels[0];
+    btn.querySelector(".tile use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
+    updateQaFlag();
   });
 }
 
-toggleButton($("act-mute"), "mute", "unmute", "Unmute", "Mute", "Alerts muted", "Alerts unmuted");
-toggleButton($("act-pause"), "pause", "unpause", "Resume", "Pause", "Alert queue paused", "Alert queue resumed");
+toggleItem($("act-mute"), ["mute", "unmute"], ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"], ["Alerts muted", "Alerts unmuted"]);
+toggleItem($("act-pause"), ["pause", "unpause"], ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"], ["Alerts paused", "Alerts resumed"]);
 $("act-skip").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("alert_action", { action: "skip" }), "Skipped the current alert"));
 $("act-reload").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("reload_overlays"), "Overlays reloaded"));
 
-// Timer: counts up from zero, or down from the minutes entered.
-const timer = { running: false, startedAt: 0, banked: 0, handle: null };
-function timerElapsed() {
-  return timer.banked + (timer.running ? Date.now() - timer.startedAt : 0);
+// ---------- Twitch connection ----------
+
+let deviceUri = null;
+
+function openTwitchDialog() {
+  closeMenus();
+  if (!$("tw-client-id").value) $("tw-client-id").value = store("twitchClientId") || auth.defaultTwitchClientId || "";
+  $("twitch-dialog").hidden = false;
+  $("tw-client-id").focus();
 }
-function timerTick() {
-  const mins = Math.max(0, parseInt($("timer-minutes").value, 10) || 0);
-  const elapsed = Math.floor(timerElapsed() / 1000);
-  let secs = elapsed;
-  if (mins > 0) {
-    secs = mins * 60 - elapsed;
-    if (secs <= 0) {
-      secs = 0;
-      timerStop();
-      $("timer").classList.add("done");
-    }
+
+async function cancelDeviceFlow() {
+  if ($("tw-code").hidden) return;
+  await invoke("twitch_cancel_sign_in").catch(() => {});
+  $("tw-code").hidden = true;
+  $("tw-connect").disabled = false;
+}
+
+async function closeTwitchDialog() {
+  $("twitch-dialog").hidden = true;
+  await cancelDeviceFlow();
+}
+
+$("tw-connect-menu").addEventListener("click", openTwitchDialog);
+$("twitch-close").addEventListener("click", closeTwitchDialog);
+
+$("tw-connect").addEventListener("click", async () => {
+  const clientId = $("tw-client-id").value.trim();
+  const btn = $("tw-connect");
+  btn.disabled = true;
+  try {
+    const code = await invoke("twitch_sign_in", { clientId });
+    store("twitchClientId", clientId);
+    deviceUri = code.verification_uri;
+    $("tw-user-code").textContent = code.user_code;
+    $("tw-code").hidden = false;
+  } catch (x) {
+    toast(String(x), true);
+    btn.disabled = false;
   }
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  const mm = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-  $("timer-display").textContent = h > 0 ? h + ":" + mm : mm;
-}
-function timerStop() {
-  if (timer.running) timer.banked += Date.now() - timer.startedAt;
-  timer.running = false;
-  clearInterval(timer.handle);
-  $("timer-start").textContent = "Start";
-  $("timer").classList.remove("running");
-}
-$("timer-start").addEventListener("click", () => {
-  if (timer.running) {
-    timerStop();
-  } else {
-    $("timer").classList.remove("done");
-    timer.running = true;
-    timer.startedAt = Date.now();
-    timer.handle = setInterval(timerTick, 250);
-    $("timer-start").textContent = "Pause";
-    $("timer").classList.add("running");
-  }
-  timerTick();
 });
-$("timer-reset").addEventListener("click", () => {
-  timerStop();
-  timer.banked = 0;
-  $("timer").classList.remove("done");
-  timerTick();
+$("tw-open-again").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (deviceUri) invoke("open_external", { url: deviceUri }).catch((x) => toast(String(x), true));
 });
-$("timer-minutes").addEventListener("input", () => { if (!timer.running) timerTick(); });
+$("tw-cancel").addEventListener("click", (e) => {
+  e.preventDefault();
+  cancelDeviceFlow();
+});
 
 // ---------- updates (git checkout installs) ----------
 
@@ -531,7 +655,6 @@ async function checkUpdates(manual = false) {
     if (!u.supported) return;
     btn.hidden = u.behind === 0;
     if (u.behind > 0) {
-      btn.textContent = u.behind === 1 ? "Update ready" : "Update ready (" + u.behind + ")";
       btn.title = "What's new:\n" + u.changes.map((c) => "- " + c).join("\n");
       if (manual) toast(u.behind === 1 ? "1 update is ready" : u.behind + " updates are ready");
     } else if (manual) {
@@ -556,22 +679,32 @@ $("update-btn").addEventListener("click", async () => {
 });
 
 $("check-update").addEventListener("click", () => {
-  setMenu(false);
+  closeMenus();
   checkUpdates(true);
 });
 
 // ---------- startup ----------
 
 async function start() {
-  buildChips();
   renderFeed();
-  timerTick();
 
   await listen("activity", (e) => {
     addLive(e.payload);
     refreshStatsSoon();
   });
   await listen("realtime-status", (e) => setRealtime(e.payload));
+  await listen("twitch-auth", async (e) => {
+    $("tw-code").hidden = true;
+    $("tw-connect").disabled = false;
+    if (e.payload.ok) {
+      $("twitch-dialog").hidden = true;
+      toast("Twitch connected as " + e.payload.login);
+      applyAuth(await invoke("restore_session"));
+      refreshViewers();
+    } else {
+      toast("Twitch sign-in failed: " + e.payload.error, true);
+    }
+  });
 
   try {
     const a = await invoke("restore_session");
@@ -583,6 +716,7 @@ async function start() {
   }
   await loadFeed();
   refreshStats();
+  refreshViewers();
   setTimeout(checkUpdates, 3000);
 }
 

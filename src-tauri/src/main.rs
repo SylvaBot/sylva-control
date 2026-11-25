@@ -16,6 +16,7 @@ fn main() {
             commands::se_sign_out,
             commands::get_feed,
             commands::get_stats,
+            commands::get_viewers,
             commands::alert_action,
             commands::reload_overlays,
             commands::replay_activity,

@@ -2,6 +2,7 @@
 
 use crate::secrets;
 use crate::state::{start_realtime, twitch_client, AppState, SeSession};
+use pine_core::public::PublicViewers;
 use pine_core::se::{AlertAction, Channel, SeClient};
 use pine_core::twitch::{self, DeviceCode};
 use pine_core::{Activity, Error};
@@ -158,62 +159,62 @@ pub struct Stats {
     /// New followers and subs in the current StreamElements session.
     followers_session: Option<u64>,
     subscribers_session: Option<u64>,
-    /// `None` when Twitch is not connected; `Some(false)` when offline.
-    live: Option<bool>,
-    viewers: Option<u64>,
-    chatters: Option<u64>,
-    /// Per-source problems, so one failing source does not hide the others.
-    problems: Vec<String>,
 }
 
+/// Follower and subscriber totals from StreamElements.
 #[tauri::command]
 pub async fn get_stats(state: State<'_, AppState>) -> CmdResult<Stats> {
-    let mut out = Stats::default();
+    let t = with_se(&state, |c, ch| async move { c.session_totals(&ch).await }).await?;
+    Ok(Stats {
+        followers: t.follower_total,
+        subscribers: t.subscriber_total,
+        followers_session: t.follower_session,
+        subscribers_session: t.subscriber_session,
+    })
+}
 
-    let se = {
-        let g = state.se.read().await;
-        g.as_ref().map(|s| (s.client.clone(), s.channel.id.clone()))
-    };
-    let tw = state.twitch.read().await.clone();
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Viewers {
+    /// Where the number came from: "twitch" (signed in to Twitch), "public" (no sign-in needed)
+    /// or "none" (no Twitch channel to look up).
+    source: &'static str,
+    live: bool,
+    /// Current viewer count while live.
+    viewers: Option<u64>,
+}
 
-    let se_fut = async {
-        match &se {
-            Some((c, ch)) => Some(c.session_totals(ch).await),
-            None => None,
-        }
-    };
-    let tw_fut = async {
-        match &tw {
-            Some(c) => Some(tokio::join!(c.viewer_count(), c.chatters(None))),
-            None => None,
-        }
-    };
-    let (se_res, tw_res) = tokio::join!(se_fut, tw_fut);
-
-    match se_res {
-        Some(Ok(t)) => {
-            out.followers = t.follower_total;
-            out.subscribers = t.subscriber_total;
-            out.followers_session = t.follower_session;
-            out.subscribers_session = t.subscriber_session;
-        }
-        Some(Err(e)) => out.problems.push(format!("StreamElements: {}", se_err(e))),
-        None => {}
+/// Live viewer count. Uses the Twitch API when Twitch is connected; otherwise looks up the
+/// StreamElements channel's Twitch name in a public service, so no Twitch sign-in is needed.
+#[tauri::command]
+pub async fn get_viewers(state: State<'_, AppState>) -> CmdResult<Viewers> {
+    if let Some(client) = state.twitch.read().await.clone() {
+        let count = client.viewer_count().await.map_err(twitch_err)?;
+        return Ok(Viewers { source: "twitch", live: count.is_some(), viewers: count });
     }
-    if let Some((viewers, chatters)) = tw_res {
-        match viewers {
-            Ok(v) => {
-                out.live = Some(v.is_some());
-                out.viewers = Some(v.unwrap_or(0));
-            }
-            Err(e) => out.problems.push(format!("Twitch viewers: {}", twitch_err(e))),
+    let login = {
+        let guard = state.se.read().await;
+        let Some(s) = guard.as_ref() else {
+            return Ok(Viewers { source: "none", live: false, viewers: None });
+        };
+        let twitch = s.channel.provider.as_deref().is_none_or(|p| p.eq_ignore_ascii_case("twitch"));
+        match (&s.channel.username, twitch) {
+            (Some(name), true) => name.clone(),
+            _ => return Ok(Viewers { source: "none", live: false, viewers: None }),
         }
-        match chatters {
-            Ok(p) => out.chatters = p.total.or(Some(p.items.len() as u64)),
-            Err(e) => out.problems.push(format!("Twitch chatters: {}", twitch_err(e))),
+    };
+    let public = match state.public_viewers.get() {
+        Some(p) => p.clone(),
+        None => {
+            let p = PublicViewers::new().map_err(|e| e.to_string())?;
+            state.public_viewers.get_or_init(|| p).clone()
         }
-    }
-    Ok(out)
+    };
+    let count = public
+        .viewer_count(&login)
+        .await
+        .map_err(|e| format!("Could not get the viewer count: {e}"))?;
+    Ok(Viewers { source: "public", live: count.is_some(), viewers: count })
 }
 
 #[tauri::command]

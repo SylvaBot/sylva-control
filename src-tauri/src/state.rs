@@ -1,3 +1,4 @@
+use pine_core::public::PublicViewers;
 use pine_core::se::astro::{self, AstroConfig, AstroEvent};
 use pine_core::se::{Channel, SeClient};
 use pine_core::twitch::{TwitchClient, TwitchTokens};
@@ -19,6 +20,8 @@ pub struct AppState {
     pub twitch: RwLock<Option<Arc<TwitchClient>>>,
     /// Cancels an in-progress Twitch device sign-in.
     pub twitch_login: Mutex<Option<CancellationToken>>,
+    /// Viewer count without a Twitch sign-in, created on first use.
+    pub public_viewers: std::sync::OnceLock<PublicViewers>,
 }
 
 /// Start the Astro connection for a session and forward its events to the window.
