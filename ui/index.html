@@ -55,7 +55,6 @@
           <span class="brand-sub" id="brand-channel"></span>
         </div>
         <div class="header-right">
-          <span class="conn" id="rt-pill" title="Live events"><span class="conn-dot"></span><span class="conn-text">Offline</span></span>
           <button class="btn accent" id="update-btn" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
 
           <div class="menu-wrap">
@@ -108,26 +107,24 @@
       <div class="content">
         <section class="hero" aria-label="Channel numbers">
           <div class="hero-top">
-            <div class="hero-label"><svg><use href="#i-viewer"/></svg>Viewers right now</div>
-            <div class="hero-row">
-              <span class="hero-num" id="stat-viewers">-</span>
-              <span class="badge" id="viewer-badge"><span class="dot"></span><span class="badge-text">Offline</span></span>
-            </div>
+            <div class="hero-label">Viewers</div>
+            <div class="hero-num" id="stat-viewers">-</div>
+            <p class="hero-note" id="viewer-note" hidden></p>
           </div>
           <div class="hero-strip">
-            <div class="cell c-follow">
-              <span class="cell-label"><svg><use href="#i-heart"/></svg>Followers</span>
+            <div class="cell">
+              <span class="cell-label">Followers</span>
               <b class="cell-num" id="stat-followers">-</b>
             </div>
-            <div class="cell c-sub">
-              <span class="cell-label"><svg><use href="#i-star"/></svg>Subscribers</span>
+            <div class="cell">
+              <span class="cell-label">Subscribers</span>
               <b class="cell-num" id="stat-subs">-</b>
             </div>
-            <div class="cell c-follow">
+            <div class="cell">
               <span class="cell-label">New followers</span>
               <b class="cell-num" id="stat-followers-session">-</b>
             </div>
-            <div class="cell c-sub">
+            <div class="cell">
               <span class="cell-label">New subs</span>
               <b class="cell-num" id="stat-subs-session">-</b>
             </div>

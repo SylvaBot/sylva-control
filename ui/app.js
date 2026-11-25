@@ -138,7 +138,6 @@ function applyAuth(a) {
   $("tw-signout").hidden = !a.twitch;
   $("tw-connect-menu").hidden = !!a.twitch;
   $("se-signout").hidden = !se;
-  if (!se) setRealtime({ state: "stopped" });
 }
 
 $("signin-form").addEventListener("submit", async (e) => {
@@ -197,34 +196,9 @@ document.addEventListener("click", (e) => {
 // ---------- realtime status ----------
 
 function setRealtime(s) {
-  const p = $("rt-pill");
-  const text = p.querySelector(".conn-text");
-  p.classList.remove("ok", "warn", "bad");
-  p.title = "Live events";
-  switch (s.state) {
-    case "connecting":
-    case "connected":
-      text.textContent = "Connecting";
-      p.classList.add("warn");
-      break;
-    case "live":
-      text.textContent = "Connected";
-      p.title = "Live events are streaming in";
-      p.classList.add("ok");
-      break;
-    case "reconnecting":
-      text.textContent = "Reconnecting";
-      p.title = (s.reason || "Connection lost") + ". Retrying in " + s.inSecs + "s.";
-      p.classList.add("warn");
-      break;
-    case "unauthorized":
-      text.textContent = "Disconnected";
-      p.title = s.message || "";
-      p.classList.add("bad");
-      toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
-      break;
-    default:
-      text.textContent = "Offline";
+  // Pine reconnects on its own, so only a rejected token needs the user's attention.
+  if (s.state === "unauthorized") {
+    toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
   }
 }
 
@@ -478,7 +452,7 @@ function resetStats() {
     $(id).textContent = "-";
     $(id).classList.remove("up");
   }
-  setBadge("off", "Offline");
+  setViewerNote(null);
 }
 
 function setSession(id, n) {
@@ -510,12 +484,12 @@ function refreshStatsSoon() {
   statsSoon = setTimeout(refreshStats, 3000);
 }
 
-/** The pill next to the viewer count: Live or Offline. */
-function setBadge(state, text) {
-  const badge = $("viewer-badge");
-  badge.className = "badge" + (state === "live" ? " live" : "");
-  badge.title = "";
-  badge.querySelector(".badge-text").textContent = text;
+/** A short muted line under the viewer count, only when the count cannot be shown. */
+function setViewerNote(text, detail) {
+  const note = $("viewer-note");
+  note.hidden = !text;
+  note.textContent = text || "";
+  note.title = detail || "";
 }
 
 // Viewers change all the time, so they are checked often. No Twitch sign-in is needed.
@@ -530,15 +504,15 @@ async function refreshViewers() {
     if (v.source === "none") {
       n.textContent = "-";
       n.title = "";
-      setBadge("off", auth.streamelements ? "No Twitch channel" : "Offline");
+      setViewerNote(auth.streamelements ? "No Twitch channel on this StreamElements account" : null);
       return;
     }
     n.textContent = v.live ? num(v.viewers) : "0";
     n.title = "Checked at " + new Date().toLocaleTimeString();
-    setBadge(v.live ? "live" : "off", v.live ? "Live" : "Offline");
+    setViewerNote(null);
   } catch (x) {
-    setBadge("off", "Viewer count unavailable");
-    $("viewer-badge").title = String(x);
+    $("stat-viewers").textContent = "-";
+    setViewerNote("Viewer count unavailable", String(x));
   }
 }
 
