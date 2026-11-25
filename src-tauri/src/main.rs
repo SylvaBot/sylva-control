@@ -33,5 +33,5 @@ fn main() {
             updater::apply_update,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Pine");
+        .expect("error while running Cortex");
 }

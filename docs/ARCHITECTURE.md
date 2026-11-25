@@ -1,7 +1,12 @@
-# Pine architecture
+# Cortex architecture
 
-Pine is a desktop control room for streamers who use StreamElements: a live activity
+Cortex is a desktop control room for streamers who use StreamElements: a live activity
 feed, alert quick actions, and live numbers (viewers, followers, subscribers).
+
+Cortex used to be called Pine. Some internal names keep the old name on purpose: the
+`pine-core` crate, the `pine` Cargo package and the `pine.exe` it builds (older copies update
+themselves with `cargo build -p pine`), the app identifier `app.pine.desktop` (it is also the
+credential store service name, so saved sign-ins keep working), and the GitHub repository.
 
 ## Stack and why
 
@@ -65,7 +70,7 @@ dev.twitch.tv/docs.
   a client ID, so the JWT is the right starting point.
 * **Twitch:** device code flow with a Public client, so no client secret ships in the app.
   The user registers a free app at dev.twitch.tv and pastes its Client ID once (or it can be
-  baked in at build time with `PINE_TWITCH_CLIENT_ID`). Access tokens refresh
+  baked in at build time with `CORTEX_TWITCH_CLIENT_ID`). Access tokens refresh
   automatically on a 401 and the new tokens are saved back to the credential store.
 
 ## Realtime flow

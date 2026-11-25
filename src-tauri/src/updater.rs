@@ -1,13 +1,17 @@
-//! In-app updates for Pine when it runs from a git checkout.
+//! In-app updates for Cortex when it runs from a git checkout.
 //!
 //! The check runs `git fetch` and counts commits on the upstream branch that are not local yet.
-//! Applying an update happens inside Pine, with no console window: it pulls, rebuilds with
+//! Applying an update happens inside Cortex, with no console window: it pulls, rebuilds with
 //! Cargo, then starts the new build and closes itself. Progress is sent to the window as
 //! `update-status` events.
 //!
 //! Windows does not let a running .exe be overwritten, but it does let it be renamed. So
 //! before building, the running pine.exe is renamed to pine.old.exe; Cargo then writes the
-//! new pine.exe, and the old file is deleted the next time Pine starts.
+//! new pine.exe, and the old file is deleted the next time Cortex starts.
+//!
+//! The Cargo package and the built program are still named `pine` (the app used to be called
+//! Pine). Copies built before the rename update themselves with `cargo build -p pine` and then
+//! start `pine.exe`, so renaming either would break their next update.
 
 use serde::Serialize;
 use std::io::{BufRead, BufReader};
@@ -56,7 +60,7 @@ fn git(root: &Path, args: &[&str]) -> Result<Output, String> {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
-    /// False when Pine is not running from a git checkout; the UI hides the button.
+    /// False when Cortex is not running from a git checkout; the UI hides the button.
     supported: bool,
     /// Number of new commits available.
     behind: u32,
@@ -118,7 +122,7 @@ pub fn clean_up_old_build() {
 }
 
 fn run_update(app: &AppHandle) -> Result<(), String> {
-    let root = repo_root().ok_or("Updates only work when Pine runs from its git folder.")?;
+    let root = repo_root().ok_or("Updates only work when Cortex runs from its git folder.")?;
 
     emit(app, "download", "Downloading the latest changes", 0);
     git(&root, &["pull", "--ff-only"])?;
@@ -194,11 +198,11 @@ fn run_update(app: &AppHandle) -> Result<(), String> {
     quiet(new_exe.to_string_lossy().as_ref())
         .current_dir(&root)
         .spawn()
-        .map_err(|e| format!("the update is installed, but Pine could not restart ({e}). Open it again."))?;
+        .map_err(|e| format!("the update is installed, but Cortex could not restart ({e}). Open it again."))?;
     Ok(())
 }
 
-/// Pull, rebuild and restart, all inside Pine. Progress arrives as `update-status` events.
+/// Pull, rebuild and restart, all inside Cortex. Progress arrives as `update-status` events.
 #[tauri::command]
 pub fn apply_update(app: AppHandle) -> Result<(), String> {
     if UPDATING.swap(true, Ordering::SeqCst) {

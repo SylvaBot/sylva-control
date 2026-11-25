@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pine</title>
+  <title>Cortex</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -51,7 +51,7 @@
       <header class="header">
         <div class="brand">
           <img src="logo.svg" alt="" width="28" height="28" />
-          <span class="brand-name">Pine</span>
+          <span class="brand-name">Cortex</span>
           <span class="brand-sub" id="brand-channel"></span>
         </div>
         <div class="header-right">
@@ -147,7 +147,7 @@
   <div class="overlay welcome" id="signin" hidden>
     <form class="dialog" id="signin-form">
       <img src="logo.svg" alt="" width="40" height="40" />
-      <h1>Sign in to Pine</h1>
+      <h1>Sign in to Cortex</h1>
       <p>Paste your StreamElements JWT token. In the dashboard, open <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account, Channels</a> and click the copy icon next to <b>JWT Token</b>.</p>
       <label for="se-token" class="sr-only">JWT token</label>
       <textarea id="se-token" rows="4" spellcheck="false" autocomplete="off" placeholder="Paste your JWT token" required></textarea>
@@ -164,7 +164,7 @@
         <button class="icon-btn" id="twitch-close" title="Close"><svg><use href="#i-x"/></svg></button>
       </div>
       <h1>Connect Twitch</h1>
-      <p>Connecting lets Pine change your stream title and category, and read your viewer count straight from Twitch. You need a free Twitch app Client ID, once.</p>
+      <p>Connecting lets Cortex change your stream title and category, and read your viewer count straight from Twitch. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
         <li>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</li>
         <li>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</li>
@@ -182,10 +182,10 @@
 
   <div class="overlay" id="update-dialog" hidden>
     <div class="dialog" role="status" aria-live="polite">
-      <h1>Updating Pine</h1>
+      <h1>Updating Cortex</h1>
       <p id="update-step">Starting</p>
       <div class="progress" id="update-progress"><span></span></div>
-      <p class="hint" id="update-text">Pine restarts by itself when it is done. You can keep it open.</p>
+      <p class="hint" id="update-text">Cortex restarts by itself when it is done. You can keep it open.</p>
       <pre class="update-error" id="update-error" hidden></pre>
       <button class="btn" type="button" id="update-close" hidden>Close</button>
     </div>
