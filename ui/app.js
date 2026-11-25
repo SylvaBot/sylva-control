@@ -108,15 +108,7 @@ function applyAuth(a) {
   $("user-name").textContent = name;
   $("user-avatar").replaceWith(Object.assign(avatar(name, se && se.avatar, "c-mint"), { id: "user-avatar" }));
   $("menu-se-name").textContent = se ? name : "-";
-  $("menu-tw-name").textContent = a.twitch ? a.twitch.login : "Not connected";
-  $("tw-signout").hidden = !a.twitch;
   $("se-signout").hidden = !se;
-  $("aud-connect").hidden = !!a.twitch;
-  $("aud-body").hidden = !a.twitch;
-  if (!a.twitch) {
-    const saved = store("twitchClientId");
-    $("tw-client-id").value = saved || a.defaultTwitchClientId || "";
-  }
   if (!se) setRealtime({ state: "stopped" });
 }
 
@@ -133,7 +125,6 @@ $("signin-form").addEventListener("submit", async (e) => {
     applyAuth(a);
     await loadFeed();
     refreshStats();
-    loadAudience(true);
     toast("Signed in as " + (a.streamelements.displayName || a.streamelements.username));
   } catch (x) {
     err.textContent = String(x);
@@ -171,16 +162,6 @@ $("se-signout").addEventListener("click", async () => {
   }
 });
 
-$("tw-signout").addEventListener("click", async () => {
-  setMenu(false);
-  try {
-    applyAuth(await invoke("twitch_sign_out"));
-    refreshStats();
-  } catch (x) {
-    toast(String(x), true);
-  }
-});
-
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[data-ext]");
   if (!a) return;
@@ -191,36 +172,8 @@ document.addEventListener("click", (e) => {
 // ---------- realtime status ----------
 
 function setRealtime(s) {
-  const p = $("rt-pill");
-  const text = p.querySelector(".status-text");
-  p.classList.remove("ok", "warn", "bad");
-  p.title = "Live events";
-  switch (s.state) {
-    case "connecting":
-      text.textContent = "Connecting";
-      p.classList.add("warn");
-      break;
-    case "connected":
-      text.textContent = "Subscribing";
-      p.classList.add("warn");
-      break;
-    case "live":
-      text.textContent = "Live events on";
-      p.classList.add("ok");
-      break;
-    case "reconnecting":
-      text.textContent = "Reconnecting in " + s.inSecs + "s";
-      p.title = s.reason || "";
-      p.classList.add("warn");
-      break;
-    case "unauthorized":
-      text.textContent = "Live events off";
-      p.title = s.message || "";
-      p.classList.add("bad");
-      toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
-      break;
-    default:
-      text.textContent = "Offline";
+  if (s.state === "unauthorized") {
+    toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
   }
 }
 
@@ -241,7 +194,6 @@ const MAX_ITEMS = 500;
 let feed = [];
 // Groups the user picked. Empty means "All".
 let shown = new Set((store("shownGroups") || []).filter((g) => GROUPS.some((x) => x.id === g)));
-let query = "";
 
 function groupOf(kind) {
   return GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[GROUPS.length - 1];
@@ -405,10 +357,7 @@ function renderItem(a, fresh) {
 }
 
 function visible(a) {
-  if (shown.size && !shown.has(groupOf(a.kind).id)) return false;
-  if (!query) return true;
-  const hay = [a.displayName, a.username, a.sender, a.message, a.redemption].filter(Boolean).join(" ").toLowerCase();
-  return hay.includes(query);
+  return !shown.size || shown.has(groupOf(a.kind).id);
 }
 
 function renderFeed() {
@@ -419,7 +368,6 @@ function renderFeed() {
   empty.textContent = feed.length
     ? "Nothing matches this filter."
     : "No activity yet. Follows, subs, bits and rewards will appear here as they happen.";
-  renderChart();
 }
 
 function addLive(a) {
@@ -432,7 +380,6 @@ function addLive(a) {
     if (extra) extra.remove();
     $("feed-empty").hidden = true;
   }
-  renderChart();
 }
 
 async function loadFeed() {
@@ -454,73 +401,14 @@ async function loadFeed() {
 
 $("feed-refresh").addEventListener("click", loadFeed);
 
-let searchTimer = null;
-$("feed-search").addEventListener("input", () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    query = $("feed-search").value.trim().toLowerCase();
-    renderFeed();
-  }, 120);
-});
-
 setInterval(() => {
   for (const t of document.querySelectorAll("#feed time[datetime]")) t.textContent = ago(t.dateTime);
-  renderChart();
 }, 60000);
-
-// ---------- last 12 hours chart ----------
-
-function renderChart() {
-  const HOURS = 12;
-  const now = new Date();
-  const top = new Date(now);
-  top.setMinutes(0, 0, 0); // start of the current hour
-  const start = top.getTime() - (HOURS - 1) * 3600000;
-  const counts = new Array(HOURS).fill(0);
-  let follows = 0, subs = 0, bits = 0;
-  for (const a of feed) {
-    const t = Date.parse(a.createdAt);
-    if (!(t >= start)) continue;
-    const i = Math.min(HOURS - 1, Math.floor((t - start) / 3600000));
-    counts[i]++;
-    if (a.kind === "follow") follows++;
-    else if (a.kind === "subscriber" || a.kind === "giftedSub" || a.kind === "communityGift") subs++;
-    else if (a.kind === "cheer" && a.amount) bits += a.amount;
-  }
-  const max = Math.max(1, ...counts);
-  const bars = $("bars");
-  if (bars.children.length !== HOURS) {
-    bars.replaceChildren(...counts.map(() => {
-      const b = el("div", "bar");
-      b.append(el("i"), el("span"));
-      return b;
-    }));
-  }
-  counts.forEach((c, i) => {
-    const b = bars.children[i];
-    b.classList.toggle("now", i === HOURS - 1);
-    b.querySelector("i").style.height = Math.max(8, Math.round((c / max) * 100)) + "%";
-    b.title = c + (c === 1 ? " event" : " events");
-    const hour = new Date(start + i * 3600000);
-    b.querySelector("span").textContent = i % 2 === 1 ? hour.toLocaleTimeString([], { hour: "numeric" }).replace(/\s/g, "") : "";
-  });
-  $("events-total").textContent = num(counts.reduce((s, c) => s + c, 0));
-  $("sum-follows").textContent = num(follows);
-  $("sum-subs").textContent = num(subs);
-  $("sum-bits").textContent = num(bits);
-}
 
 // ---------- stats ----------
 
 function resetStats() {
-  for (const id of ["stat-viewers", "stat-chatters", "stat-followers", "stat-subs", "sub-status", "sub-updated", "sub-followers", "sub-subs"]) {
-    $(id).textContent = "-";
-  }
-  $("live-pill").hidden = true;
-}
-
-function plusCount(n) {
-  return n === null || n === undefined ? "-" : "+" + num(n);
+  for (const id of ["stat-viewers", "stat-followers", "stat-subs"]) $(id).textContent = "-";
 }
 
 let statsTimer = null;
@@ -528,31 +416,16 @@ async function refreshStats() {
   clearTimeout(statsTimer);
   statsTimer = setTimeout(refreshStats, 30000);
   if (!auth.streamelements && !auth.twitch) return;
-  const btn = $("stats-refresh");
-  btn.classList.add("spin");
   try {
     const s = await invoke("get_stats");
+    $("stat-viewers").textContent = num(s.viewers);
     $("stat-followers").textContent = num(s.followers);
     $("stat-subs").textContent = num(s.subscribers);
-    $("sub-followers").textContent = plusCount(s.followersSession);
-    $("sub-subs").textContent = plusCount(s.subscribersSession);
-    $("stat-viewers").textContent = num(s.viewers);
-    $("stat-chatters").textContent = num(s.chatters);
-    const twitch = s.live !== null && s.live !== undefined;
-    $("sub-status").textContent = twitch ? (s.live ? "Live" : "Offline") : "Connect Twitch";
-    $("sub-updated").textContent = twitch ? new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Connect Twitch";
-    const live = $("live-pill");
-    live.hidden = !twitch;
-    live.textContent = s.live ? "Live" : "Offline";
-    live.classList.toggle("on", !!s.live);
     if (s.problems.length) console.warn(s.problems.join("\n"));
   } catch (x) {
     console.warn(x);
-  } finally {
-    btn.classList.remove("spin");
   }
 }
-$("stats-refresh").addEventListener("click", refreshStats);
 
 let statsSoon = null;
 function refreshStatsSoon() {
@@ -587,8 +460,8 @@ function toggleButton(btn, onAction, offAction, onLabel, offLabel, onToast, offT
   });
 }
 
-toggleButton($("act-mute"), "mute", "unmute", "Unmute alerts", "Mute alerts", "Alerts muted", "Alerts unmuted");
-toggleButton($("act-pause"), "pause", "unpause", "Resume alerts", "Pause alerts", "Alert queue paused", "Alert queue resumed");
+toggleButton($("act-mute"), "mute", "unmute", "Unmute", "Mute", "Alerts muted", "Alerts unmuted");
+toggleButton($("act-pause"), "pause", "unpause", "Resume", "Pause", "Alert queue paused", "Alert queue resumed");
 $("act-skip").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("alert_action", { action: "skip" }), "Skipped the current alert"));
 $("act-reload").addEventListener("click", (e) =>
@@ -645,110 +518,6 @@ $("timer-reset").addEventListener("click", () => {
 });
 $("timer-minutes").addEventListener("input", () => { if (!timer.running) timerTick(); });
 
-// ---------- audience (Twitch) ----------
-
-let audKind = "subscribers";
-let audItems = [];
-let audCursor = null;
-let audTotal = null;
-let audLoading = false;
-let audRequest = 0;
-
-for (const tab of document.querySelectorAll(".seg")) {
-  tab.addEventListener("click", () => {
-    for (const t of document.querySelectorAll(".seg")) t.setAttribute("aria-selected", String(t === tab));
-    audKind = tab.dataset.kind;
-    loadAudience(true);
-  });
-}
-
-function renderAudience() {
-  const q = $("aud-search").value.trim().toLowerCase();
-  const rows = audItems.filter((u) => !q || u.user_name.toLowerCase().includes(q) || u.user_login.includes(q));
-  $("aud-list").replaceChildren(
-    ...rows.map((u) => {
-      const li = el("li", audKind === "chatters" ? "in-chat" : "");
-      li.append(avatar(u.user_name, null), el("span", "who", u.user_name));
-      let meta = "";
-      if (audKind === "subscribers") {
-        meta = tierLabel(u.tier) || u.tier;
-        if (u.is_gift) meta += u.gifter_name ? ", gift from " + u.gifter_name : ", gift";
-      } else if (audKind === "followers" && u.followed_at) {
-        meta = new Date(u.followed_at).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
-      }
-      if (meta) li.appendChild(el("span", "meta-pill", meta));
-      return li;
-    })
-  );
-  const label = { subscribers: "subscribers", followers: "followers", chatters: "in chat" }[audKind];
-  $("aud-total").textContent = audTotal !== null ? num(audTotal) + " " + label : "";
-  $("aud-more").hidden = !audCursor;
-  const empty = $("aud-empty");
-  empty.hidden = rows.length > 0 || audLoading;
-  empty.textContent = q ? "No loaded names match." : "Nobody here yet.";
-}
-
-async function loadAudience(reset) {
-  if (!auth.twitch) return;
-  // "Load more" waits for the current page; a reset always wins over older requests.
-  if (audLoading && !reset) return;
-  if (reset) {
-    audItems = [];
-    audCursor = null;
-    audTotal = null;
-    renderAudience();
-  }
-  const req = ++audRequest;
-  audLoading = true;
-  $("aud-refresh").classList.add("spin");
-  try {
-    const page = await invoke("get_audience", { kind: audKind, cursor: reset ? null : audCursor });
-    if (req !== audRequest) return;
-    audItems = audItems.concat(page.items);
-    audCursor = page.cursor;
-    audTotal = page.total ?? audTotal;
-  } catch (x) {
-    if (req === audRequest) toast(String(x), true);
-  } finally {
-    if (req === audRequest) {
-      audLoading = false;
-      $("aud-refresh").classList.remove("spin");
-      renderAudience();
-    }
-  }
-}
-
-$("aud-search").addEventListener("input", renderAudience);
-$("aud-more").addEventListener("click", () => loadAudience(false));
-$("aud-refresh").addEventListener("click", () => loadAudience(true));
-
-let deviceUri = null;
-$("tw-connect").addEventListener("click", async () => {
-  const clientId = $("tw-client-id").value.trim();
-  const btn = $("tw-connect");
-  btn.disabled = true;
-  try {
-    const code = await invoke("twitch_sign_in", { clientId });
-    store("twitchClientId", clientId);
-    deviceUri = code.verification_uri;
-    $("tw-user-code").textContent = code.user_code;
-    $("tw-code").hidden = false;
-  } catch (x) {
-    toast(String(x), true);
-    btn.disabled = false;
-  }
-});
-$("tw-open-again").addEventListener("click", (e) => {
-  e.preventDefault();
-  if (deviceUri) invoke("open_external", { url: deviceUri }).catch((x) => toast(String(x), true));
-});
-$("tw-cancel").addEventListener("click", async (e) => {
-  e.preventDefault();
-  await invoke("twitch_cancel_sign_in");
-  $("tw-code").hidden = true;
-  $("tw-connect").disabled = false;
-});
-
 // ---------- updates (git checkout installs) ----------
 
 let updateTimer = null;
@@ -803,18 +572,6 @@ async function start() {
     refreshStatsSoon();
   });
   await listen("realtime-status", (e) => setRealtime(e.payload));
-  await listen("twitch-auth", async (e) => {
-    $("tw-code").hidden = true;
-    $("tw-connect").disabled = false;
-    if (e.payload.ok) {
-      toast("Twitch connected as " + e.payload.login);
-      applyAuth(await invoke("restore_session"));
-      refreshStats();
-      loadAudience(true);
-    } else {
-      toast("Twitch sign-in failed: " + e.payload.error, true);
-    }
-  });
 
   try {
     const a = await invoke("restore_session");
@@ -826,7 +583,6 @@ async function start() {
   }
   await loadFeed();
   refreshStats();
-  loadAudience(true);
   setTimeout(checkUpdates, 3000);
 }
 
