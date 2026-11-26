@@ -46,44 +46,33 @@
 <symbol id="i-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6" /> <path d="M18.09 10.37A6 6 0 1 1 10.34 18" /> <path d="M7 6h1v4" /> <path d="m16.71 13.88.7.71-2.82 2.82" /></symbol>
 <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
 <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></symbol>
+<symbol id="i-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="5" y="5" rx="2" /></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /> <path d="M7 12h10" /> <path d="M10 18h4" /></symbol>
+<symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
 </defs></svg>
   <div class="app">
-    <nav class="rail" aria-label="Sections">
-      <img class="rail-logo" src="logo.svg" alt="Cortex" width="32" height="32" />
-      <div class="rail-nav">
-        <button class="rail-btn active" type="button" data-section="sec-overview" title="Overview" aria-label="Overview"><svg><use href="#i-home"/></svg></button>
-        <button class="rail-btn" type="button" data-section="sec-actions" title="Quick actions" aria-label="Quick actions"><svg><use href="#i-zap"/></svg></button>
-        <button class="rail-btn" type="button" data-section="sec-info" title="Stream info" aria-label="Stream info"><svg><use href="#i-pencil"/></svg></button>
-        <button class="rail-btn" type="button" data-section="sec-activity" title="Recent activity" aria-label="Recent activity"><svg><use href="#i-activity"/></svg></button>
+    <header class="titlebar" data-tauri-drag-region>
+      <div class="brand" data-tauri-drag-region>
+        <img src="logo.svg" alt="" width="28" height="28" data-tauri-drag-region />
+        <span class="avatar" id="user-avatar"></span>
+        <span class="brand-name" id="brand-channel" data-tauri-drag-region></span>
       </div>
-      <div class="menu-wrap rail-bottom">
-        <button class="rail-btn" id="account-btn" type="button" aria-haspopup="true" aria-expanded="false" title="Settings" aria-label="Settings"><svg><use href="#i-settings"/></svg></button>
-        <div class="menu" id="account-menu" hidden>
-              <div class="menu-row"><span>StreamElements</span><b id="menu-se-name">-</b></div>
-              <div class="menu-row"><span>Twitch</span><b id="menu-tw-name">Not connected</b></div>
-              <div class="menu-sep"></div>
-              <button class="menu-item" id="tw-connect-menu"><svg><use href="#i-twitch"/></svg>Connect Twitch</button>
-              <button class="menu-item" id="check-update" hidden><svg><use href="#i-refresh"/></svg>Check for updates</button>
-              <button class="menu-item" id="tw-signout" hidden><svg><use href="#i-logout"/></svg>Disconnect Twitch</button>
-              <button class="menu-item danger" id="se-signout"><svg><use href="#i-logout"/></svg>Sign out</button>
+      <div class="titlebar-right">
+        <button class="btn accent" id="update-btn" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
+        <div class="pill-group">
+          <button class="pill-btn" id="account-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog"><svg><use href="#i-settings"/></svg></button>
+        </div>
+        <div class="pill-group" id="window-controls">
+          <button class="pill-btn" id="win-min" type="button" title="Minimize" aria-label="Minimize"><svg><use href="#i-minus"/></svg></button>
+          <button class="pill-btn" id="win-max" type="button" title="Maximize" aria-label="Maximize"><svg><use href="#i-square"/></svg></button>
+          <button class="pill-btn close" id="win-close" type="button" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
         </div>
       </div>
-    </nav>
-    <div class="main">
-      <header class="header">
-        <div class="brand">
-          <span class="avatar" id="user-avatar"></span>
-          <div class="brand-text">
-            <span class="brand-name" id="brand-channel"></span>
-            <span class="brand-sub">Cortex</span>
-          </div>
-        </div>
-        <div class="header-right">
-          <button class="btn accent" id="update-btn" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
-        </div>
-      </header>
+    </header>
 
+    <main class="main">
       <div class="content" id="content">
         <section class="adbar" id="adbar" aria-label="Ad breaks" hidden>
           <span class="adbar-icon"><svg><use href="#i-megaphone"/></svg></span>
@@ -97,59 +86,55 @@
         </section>
 
         <section class="block" id="sec-overview" aria-labelledby="ov-title">
-        <h2 class="block-title" id="ov-title"><svg><use href="#i-viewer"/></svg>Your channel</h2>
-        <div class="hero">
-          <div class="hero-top">
-            <div class="hero-label">Viewers</div>
-            <div class="hero-num" id="stat-viewers">-</div>
-            <p class="hero-note" id="viewer-note" hidden></p>
-          </div>
-          <div class="hero-strip">
-            <div class="cell">
-              <span class="cell-label">Followers</span>
-              <b class="cell-num" id="stat-followers">-</b>
+          <h2 class="block-title" id="ov-title"><svg><use href="#i-viewer"/></svg>Your channel</h2>
+          <div class="hero">
+            <div class="hero-top">
+              <span class="live-pill" id="live-pill" data-state="unknown"><span class="live-dot"></span><span id="live-text">Checking</span></span>
+              <div class="hero-num" id="stat-viewers">-</div>
+              <div class="hero-label" id="viewers-label">viewers</div>
+              <p class="hero-note" id="viewer-note" hidden></p>
             </div>
-            <div class="cell">
-              <span class="cell-label">Subscribers</span>
-              <b class="cell-num" id="stat-subs">-</b>
-            </div>
-            <div class="cell">
-              <span class="cell-label">New followers</span>
-              <b class="cell-num" id="stat-followers-session">-</b>
-            </div>
-            <div class="cell">
-              <span class="cell-label">New subs</span>
-              <b class="cell-num" id="stat-subs-session">-</b>
+            <div class="hero-strip">
+              <div class="cell">
+                <span class="cell-label">Followers</span>
+                <b class="cell-num" id="stat-followers">-</b>
+              </div>
+              <div class="cell">
+                <span class="cell-label">Subscribers</span>
+                <b class="cell-num" id="stat-subs">-</b>
+              </div>
             </div>
           </div>
-        </div>
         </section>
 
         <section class="block" id="sec-actions" aria-labelledby="qa-title">
           <h2 class="block-title" id="qa-title"><svg><use href="#i-zap"/></svg>Quick actions</h2>
           <div class="qa-grid">
-            <button class="qa-btn" id="act-mute" type="button" aria-pressed="false"><svg><use href="#i-vol"/></svg><span>Mute alerts</span></button>
-            <button class="qa-btn" id="act-pause" type="button" aria-pressed="false"><svg><use href="#i-pause"/></svg><span>Pause alerts</span></button>
-            <button class="qa-btn" id="act-skip" type="button"><svg><use href="#i-skip"/></svg><span>Skip alert</span></button>
-            <button class="qa-btn" id="act-reload" type="button"><svg><use href="#i-layers"/></svg><span>Reload overlays</span></button>
+            <button class="qa-btn" id="act-mute" type="button" aria-pressed="false"><span class="qa-icon"><svg><use href="#i-vol"/></svg></span><span>Mute alerts</span></button>
+            <button class="qa-btn" id="act-pause" type="button" aria-pressed="false"><span class="qa-icon"><svg><use href="#i-pause"/></svg></span><span>Pause alerts</span></button>
+            <button class="qa-btn" id="act-skip" type="button"><span class="qa-icon"><svg><use href="#i-skip"/></svg></span><span>Skip alert</span></button>
+            <button class="qa-btn" id="act-reload" type="button"><span class="qa-icon"><svg><use href="#i-layers"/></svg></span><span>Reload overlays</span></button>
           </div>
         </section>
 
         <section class="block" id="sec-info" aria-labelledby="info-title">
           <h2 class="block-title" id="info-title"><svg><use href="#i-pencil"/></svg>Stream info</h2>
           <div class="panel">
-          <div class="info-connect" id="info-connect" hidden>
-            <p>Connect Twitch once to change your title and category from here.</p>
-            <button class="btn" type="button" id="info-connect-btn">Connect Twitch</button>
-          </div>
-          <form class="info-form" id="info-form" autocomplete="off">
-            <label class="field info-title-field"><span class="field-head"><span>Title</span><span class="counter" id="title-count" aria-live="off"></span></span><input id="info-title-input" maxlength="140" spellcheck="true" placeholder="Stream title" /></label>
-            <label class="field cat-field"><span>Category</span>
-              <input id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
-              <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
-            </label>
-            <button class="btn primary" type="submit" id="info-save" disabled>Save</button>
-          </form>
+            <div class="info-connect" id="info-connect" hidden>
+              <p>Connect Twitch once to change your title and category from here.</p>
+              <button class="btn" type="button" id="info-connect-btn">Connect Twitch</button>
+            </div>
+            <form class="info-form" id="info-form" autocomplete="off">
+              <label class="field info-title-field"><span class="field-head"><span>Title</span><span class="counter" id="title-count" aria-live="off"></span></span><textarea id="info-title-input" rows="1" maxlength="140" spellcheck="true" placeholder="Stream title"></textarea></label>
+              <div class="info-row">
+                <span class="cat-art" id="cat-art" aria-hidden="true"><svg><use href="#i-image"/></svg></span>
+                <label class="field cat-field"><span>Category</span>
+                  <input id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
+                  <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
+                </label>
+                <button class="btn primary" type="submit" id="info-save" disabled>Save</button>
+              </div>
+            </form>
           </div>
         </section>
 
@@ -157,15 +142,63 @@
           <div class="feed-head">
             <h2 class="block-title" id="feed-title"><svg><use href="#i-activity"/></svg>Recent activity</h2>
             <span class="feed-sub" id="mix-label">Last 24 hours</span>
-            <button class="icon-btn" id="feed-refresh" title="Reload history"><svg><use href="#i-refresh"/></svg></button>
+            <div class="feed-tools">
+              <div class="menu-wrap">
+                <button class="btn filter-btn" id="filter-btn" type="button" aria-haspopup="true" aria-expanded="false"><svg><use href="#i-filter"/></svg><span id="filter-label">Filter</span></button>
+                <div class="menu filter-menu" id="filters" role="group" aria-label="Show these kinds of activity" hidden></div>
+              </div>
+              <button class="icon-btn" id="feed-refresh" title="Reload history"><svg><use href="#i-refresh"/></svg></button>
+            </div>
           </div>
           <div class="feed-card">
-          <div class="mix" id="mix" aria-hidden="true"></div>
-          <div class="filters" id="filters" role="group" aria-label="Filter activity"></div>
-          <ol class="feed" id="feed" aria-live="polite"></ol>
-          <p class="empty" id="feed-empty" hidden></p>
+            <div class="mix" id="mix" aria-hidden="true"></div>
+            <ol class="feed" id="feed" aria-live="polite"></ol>
+            <p class="empty" id="feed-empty" hidden></p>
           </div>
         </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay settings-overlay" id="settings" hidden>
+    <div class="dialog settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="dialog-head">
+        <h1 id="settings-title">Settings</h1>
+        <button class="icon-btn" id="settings-close" title="Close"><svg><use href="#i-x"/></svg></button>
+      </div>
+
+      <div class="set-group">
+        <h2>Accounts</h2>
+        <div class="set-card">
+          <div class="set-row"><span>StreamElements</span><b id="menu-se-name">-</b></div>
+          <div class="set-row"><span>Twitch</span><b id="menu-tw-name">Not connected</b></div>
+          <div class="set-actions">
+            <button class="btn" id="tw-connect-menu" type="button"><svg><use href="#i-twitch"/></svg>Connect Twitch</button>
+            <button class="btn" id="tw-signout" type="button" hidden><svg><use href="#i-logout"/></svg>Disconnect Twitch</button>
+            <button class="btn danger" id="se-signout" type="button"><svg><use href="#i-logout"/></svg>Sign out</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <h2>Dashboard</h2>
+        <div class="set-card" id="prefs">
+          <label class="set-row toggle"><span>Ad break bar<small>Countdown to the next Twitch ad break</small></span><input type="checkbox" data-pref="adbar" /><i></i></label>
+          <label class="set-row toggle"><span>Quick actions</span><input type="checkbox" data-pref="actions" /><i></i></label>
+          <label class="set-row toggle"><span>Stream info</span><input type="checkbox" data-pref="info" /><i></i></label>
+          <label class="set-row toggle"><span>Compact activity<small>Smaller rows so more fit on screen</small></span><input type="checkbox" data-pref="compact" /><i></i></label>
+          <label class="set-row toggle"><span>Warm glow<small>The soft light at the top of the window</small></span><input type="checkbox" data-pref="glow" /><i></i></label>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <h2>About</h2>
+        <div class="set-card">
+          <div class="set-row"><span>Version</span><b id="app-version">-</b></div>
+          <div class="set-actions">
+            <button class="btn" id="check-update" type="button" hidden><svg><use href="#i-refresh"/></svg>Check for updates</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
