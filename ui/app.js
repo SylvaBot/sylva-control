@@ -802,6 +802,9 @@ $("info-cat-input").addEventListener("input", () => {
   }, 250);
 });
 
+// Clicking into the category selects it, so typing starts a new search right away.
+$("info-cat-input").addEventListener("focus", () => $("info-cat-input").select());
+
 $("info-cat-input").addEventListener("keydown", (e) => {
   if ($("cat-list").hidden || !catResults.length) return;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
