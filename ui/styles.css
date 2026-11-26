@@ -593,3 +593,15 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
 
 /* Settings opens under the gear, at the top right */
 .settings-overlay { place-items: start end; padding: 60px 12px 12px; background: rgba(5, 4, 4, .45); }
+
+/* The sign-in screen and every dialog start below the title bar, so the window
+   can always be moved, minimized or closed (the system title bar is hidden). */
+.overlay { inset: 56px 0 0 0; }
+.settings-overlay { padding-top: 4px; }
+body:has(#signin:not([hidden])) .pill-group:has(#account-btn),
+body:has(#signin:not([hidden])) .brand-user { visibility: hidden; }
+
+@media (max-width: 480px) {
+  /* The ad break line wraps instead of being cut off. */
+  .adbar-text span { white-space: normal; }
+}

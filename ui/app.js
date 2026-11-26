@@ -715,7 +715,7 @@ function toggleButton(btn, actions, labels, icons, toasts) {
     if (!ok) return;
     const now = !on;
     btn.setAttribute("aria-pressed", String(now));
-    btn.querySelector("span").textContent = now ? labels[1] : labels[0];
+    btn.querySelector("span:not(.qa-icon)").textContent = now ? labels[1] : labels[0];
     btn.querySelector("use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
   });
 }
@@ -723,7 +723,7 @@ function toggleButton(btn, actions, labels, icons, toasts) {
 /** Show a toggle as on or off. */
 function setToggle(btn, on, labels, icons) {
   btn.setAttribute("aria-pressed", String(on));
-  btn.querySelector("span").textContent = on ? labels[1] : labels[0];
+  btn.querySelector("span:not(.qa-icon)").textContent = on ? labels[1] : labels[0];
   btn.querySelector("use").setAttribute("href", "#" + (on ? icons[1] : icons[0]));
 }
 
