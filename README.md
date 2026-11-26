@@ -33,14 +33,22 @@ Download the latest installer from the
   first time, right click Cortex in Applications and choose **Open**.
 * **Linux:** the `.AppImage`, `.deb` or `.rpm`.
 
-Installed copies do not update themselves yet: download the new installer from Releases and
-run it over the old one. Your sign-ins are kept.
+From 0.2.0 on, installed copies update themselves: Cortex checks the latest GitHub Release at
+start and every 15 minutes, and an **Update** button appears at the top when there is a new
+version. Click it and Cortex downloads, installs and restarts. On Linux this works for the
+AppImage; `.deb` and `.rpm` installs update through a new download. Your sign-ins are kept.
 
 ## Release a new version
 
 Bump `version` in `Cargo.toml` and `src-tauri/tauri.conf.json`, then push a tag such as
-`v0.2.0`. The **Release** workflow builds the installers for Windows, macOS and Linux and
+`v0.3.0`. The **Release** workflow builds the installers for Windows, macOS and Linux and
 publishes them as a GitHub Release. You can also start it by hand from the Actions tab.
+
+The release also publishes `latest.json`, which installed copies read to update themselves.
+Update files are signed: the repository secret `TAURI_SIGNING_PRIVATE_KEY` holds the private
+key (no password), and its public key is `plugins.updater.pubkey` in `tauri.conf.json`. Keep
+the private key safe: losing it means installed copies can no longer update themselves, and
+anyone holding it could sign an update.
 
 ## Run from source
 

@@ -938,7 +938,7 @@ setInterval(() => {
 
 $("ad-reconnect").addEventListener("click", openTwitchDialog);
 
-// ---------- updates (git checkout installs) ----------
+// ---------- updates (installed copies and git checkouts) ----------
 
 // Checked at startup and then every 15 minutes, with no action needed.
 const UPDATE_CHECK_MS = 15 * 60 * 1000;
@@ -986,6 +986,10 @@ function showUpdateStatus(s) {
     $("update-error").textContent = s.text;
     return;
   }
+  if (s.step === "fetch" || (s.step === "restart" && s.text === "Installing")) {
+    $("update-step").textContent = s.text;
+    return;
+  }
   let text = UPDATE_STEPS[s.step] || s.text;
   if (s.step === "build" && s.compiled > 0) text += " (" + s.compiled + (s.compiled === 1 ? " part" : " parts") + " done)";
   $("update-step").textContent = text;
@@ -995,7 +999,7 @@ $("update-btn").addEventListener("click", async () => {
   if (updating) return;
   updating = true;
   $("update-btn").disabled = true;
-  showUpdateStatus({ step: "download", text: "", compiled: 0 });
+  showUpdateStatus({ step: "fetch", text: "Starting", compiled: 0 });
   try {
     await invoke("apply_update");
   } catch (x) {

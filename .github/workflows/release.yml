@@ -59,18 +59,34 @@ jobs:
       - name: Build the installer
         shell: bash
         working-directory: src-tauri
+        env:
+          # Signs the update files so installed copies of Cortex accept them (see README).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
           if [ -n "${{ matrix.target }}" ]; then
             npx --yes @tauri-apps/cli@2 build --target "${{ matrix.target }}"
           else
             npx --yes @tauri-apps/cli@2 build
           fi
+      - name: Name the macOS update file after its chip
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          arch=$([ "${{ matrix.target }}" = aarch64-apple-darwin ] && echo aarch64 || echo x64)
+          cd "${{ matrix.bundle }}/macos"
+          mv Cortex.app.tar.gz "Cortex_${arch}.app.tar.gz"
+          mv Cortex.app.tar.gz.sig "Cortex_${arch}.app.tar.gz.sig"
       - uses: actions/upload-artifact@v4
         with:
           name: cortex-${{ matrix.os }}-${{ matrix.target || 'native' }}
           path: |
             ${{ matrix.bundle }}/nsis/*.exe
+            ${{ matrix.bundle }}/nsis/*.exe.sig
             ${{ matrix.bundle }}/msi/*.msi
+            ${{ matrix.bundle }}/macos/*.app.tar.gz
+            ${{ matrix.bundle }}/macos/*.app.tar.gz.sig
+            ${{ matrix.bundle }}/appimage/*.AppImage.sig
             ${{ matrix.bundle }}/dmg/*.dmg
             ${{ matrix.bundle }}/appimage/*.AppImage
             ${{ matrix.bundle }}/deb/*.deb
@@ -90,10 +106,40 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      - name: Gather the installers
+      - name: Gather the installers and write latest.json for the in-app updater
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
+          REPO: ${{ github.repository }}
         run: |
-          mkdir out
-          find dist -type f -exec cp {} out/ \;
+          mkdir out sigs
+          find dist -type f ! -name '*.sig' -exec cp {} out/ \;
+          find dist -type f -name '*.sig' -exec cp {} sigs/ \;
+          python3 - <<'PY'
+          import glob, json, os, datetime
+          tag, repo = os.environ["TAG"], os.environ["REPO"]
+          base = f"https://github.com/{repo}/releases/download/{tag}/"
+          wanted = {
+              "windows-x86_64": "*_x64-setup.exe",
+              "darwin-aarch64": "Cortex_aarch64.app.tar.gz",
+              "darwin-x86_64": "Cortex_x64.app.tar.gz",
+              "linux-x86_64": "*.AppImage",
+          }
+          platforms = {}
+          for key, pattern in wanted.items():
+              files = glob.glob(os.path.join("out", pattern))
+              if len(files) != 1:
+                  raise SystemExit(f"{key}: expected one {pattern}, found {files}")
+              name = os.path.basename(files[0])
+              sig = open(os.path.join("sigs", name + ".sig")).read().strip()
+              platforms[key] = {"signature": sig, "url": base + name}
+          latest = {
+              "version": tag.lstrip("v"),
+              "notes": f"Cortex {tag.lstrip('v')}",
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "platforms": platforms,
+          }
+          json.dump(latest, open("out/latest.json", "w"), indent=2)
+          PY
           ls -la out
       - uses: softprops/action-gh-release@v2
         with:
@@ -104,5 +150,6 @@ jobs:
             Windows: download `Cortex_*_x64-setup.exe` and run it. It is not code signed yet, so if SmartScreen warns, click More info, then Run anyway.
             macOS: the `.dmg` (`aarch64` for Apple Silicon, `x64` for Intel). Not notarized yet: the first time, right click Cortex in Applications and choose Open.
             Linux: the `.AppImage`, `.deb` or `.rpm`.
+            Already have Cortex 0.2.0 or newer installed? It updates itself: click Update at the top when it appears.
           files: out/*
           fail_on_unmatched_files: true
