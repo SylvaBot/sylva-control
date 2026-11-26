@@ -118,9 +118,12 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
   user-select: none; -webkit-user-select: none;
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand img { width: 28px; height: 28px; border-radius: 8px; flex: none; }
-.brand .avatar { width: 28px; height: 28px; font-size: 12px; }
-.brand-name { font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand > img { width: 26px; height: 26px; border-radius: 7px; flex: none; }
+.brand-app { font-weight: 750; font-size: 15px; letter-spacing: -0.02em; }
+.brand-user { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 12px; margin-left: 2px; border-left: 1px solid var(--border-2); }
+.brand-user:not(:has(.avatar:not(:empty))) { display: none; }
+.brand .avatar { width: 24px; height: 24px; font-size: 11px; }
+.brand-name { font-weight: 600; font-size: 13.5px; color: var(--text-2); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand-name:empty { display: none; }
 .titlebar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .titlebar .btn { height: 34px; }
@@ -206,7 +209,11 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
 }
 
 /* A section: bold heading with a small icon, then a card module */
-.block { flex: none; display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 12px; }
+.block { flex: none; display: flex; flex-direction: column; gap: 12px; scroll-margin-top: 12px; position: relative; }
+/* Cards blur what is behind them, which makes each one its own layer. Sections with a
+   dropdown sit above the ones after them so the dropdown is never covered. */
+#sec-info { z-index: 3; }
+#sec-activity { z-index: 2; }
 .block-title {
   display: flex; align-items: center; gap: 10px; margin: 0;
   font-size: 20px; font-weight: 750; letter-spacing: -0.025em; line-height: 1.2; color: var(--text);
@@ -584,7 +591,5 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
   .info-row .cat-field { flex: 1 1 160px; }
 }
 
-/* The channel avatar takes the logo's place once signed in */
-.brand:has(.avatar:not(:empty)) > img { display: none; }
 /* Settings opens under the gear, at the top right */
 .settings-overlay { place-items: start end; padding: 60px 12px 12px; background: rgba(5, 4, 4, .45); }
