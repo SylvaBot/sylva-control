@@ -100,6 +100,8 @@ pub struct SylvaChannel {
     pub name: Option<String>,
     #[serde(default)]
     pub login: Option<String>,
+    #[serde(default)]
+    pub avatar: Option<String>,
 }
 
 #[derive(Clone)]
@@ -156,6 +158,29 @@ impl SylvaClient {
         Ok((events, head))
     }
 
+    /// Pause, resume, mute, unmute or skip the alert queue, or reload every
+    /// overlay (`reload`). Returns the queue's state.
+    pub async fn alerts(&self, key: &str, action: &str) -> Result<AlertState> {
+        let resp = self
+            .http
+            .post(format!("{}/v1/channels/{}/alerts/{action}", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        Ok(check(resp).await?.json().await?)
+    }
+
+    /// The alert queue now.
+    pub async fn alert_state(&self, key: &str) -> Result<AlertState> {
+        let resp = self
+            .http
+            .get(format!("{}/v1/channels/{}/state", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        Ok(check(resp).await?.json().await?)
+    }
+
     /// Play an old event's alert next.
     pub async fn replay(&self, key: &str, seq: u64) -> Result<()> {
         let resp = self
@@ -172,6 +197,20 @@ impl SylvaClient {
 /// Channel keys look like `twitch:12826`; the dashboard puts them in paths as they are.
 fn enc(key: &str) -> String {
     key.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, ':' | '-' | '_')).collect()
+}
+
+/// The alert queue, as Sylva reports it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlertState {
+    #[serde(default)]
+    pub paused: bool,
+    #[serde(default)]
+    pub muted: bool,
+    #[serde(default)]
+    pub queued: u64,
+    #[serde(default)]
+    pub overlays_connected: u64,
 }
 
 /// A Sylva event as Cortex's activity. Chat is left out. The id is the

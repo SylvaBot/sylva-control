@@ -173,15 +173,12 @@
       <div class="set-group">
         <h2>Accounts</h2>
         <div class="set-card">
-          <div class="set-row"><span>StreamElements</span><b id="menu-se-name">-</b></div>
           <div class="set-row"><span>Twitch</span><b id="menu-tw-name">Not connected</b></div>
           <div class="set-row"><span>Sylva</span><b id="menu-sy-name">Not connected</b></div>
           <div class="set-actions">
             <button class="btn" id="tw-connect-menu" type="button"><svg><use href="#i-twitch"/></svg>Connect Twitch</button>
             <button class="btn" id="tw-signout" type="button" hidden><svg><use href="#i-logout"/></svg>Disconnect Twitch</button>
-            <button class="btn" id="sy-connect" type="button"><svg><use href="#i-activity"/></svg>Connect Sylva</button>
-            <button class="btn" id="sy-signout" type="button" hidden><svg><use href="#i-logout"/></svg>Disconnect Sylva</button>
-            <button class="btn danger" id="se-signout" type="button"><svg><use href="#i-logout"/></svg>Sign out</button>
+            <button class="btn danger" id="sy-signout" type="button"><svg><use href="#i-logout"/></svg>Sign out</button>
           </div>
         </div>
       </div>
@@ -213,12 +210,11 @@
     <form class="dialog" id="signin-form">
       <img src="logo.svg" alt="" width="40" height="40" />
       <h1>Sign in to Cortex</h1>
-      <p>Paste your StreamElements JWT token. In the dashboard, open <a href="#" data-ext="https://streamelements.com/dashboard/account/channels">Account, Channels</a> and click the copy icon next to <b>JWT Token</b>.</p>
-      <label for="se-token" class="sr-only">JWT token</label>
-      <textarea id="se-token" rows="4" spellcheck="false" autocomplete="off" placeholder="Paste your JWT token" required></textarea>
-      <p class="hint">Saved in your system's credential store, never in a file.</p>
+      <p>Cortex runs on Sylva: your activity, alerts and overlays. Sign in and approve Cortex in the browser that opens.</p>
+      <p class="hint" id="signin-code" hidden></p>
+      <p class="hint">Cortex keeps its sign-in in your system's credential store, never in a file.</p>
       <p class="error" id="signin-error" hidden></p>
-      <button class="btn primary" type="submit" id="signin-submit">Sign in</button>
+      <button class="btn primary" type="submit" id="signin-submit">Sign in with Sylva</button>
     </form>
   </div>
 

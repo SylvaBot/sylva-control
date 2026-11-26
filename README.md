@@ -2,14 +2,14 @@
 
 <img src="assets/cortex-logo.svg" alt="Cortex logo" width="96" />
 
-A desktop control room for StreamElements streamers, written in Rust. Cortex (Latin for bark)
+A desktop control room for Sylva streamers, written in Rust. Cortex (Latin for bark)
 is the desktop app in the Sylva family. It used to be called Pine.
 
-* **Live numbers:** current viewers in large type (checked every 15 seconds, no Twitch sign-in
-  needed), with followers, subscribers and what is new this stream below.
-* **Activity feed:** follows, subs, gifted subs, bits, tips, channel point and store
-  redemptions, raids. Each kind is its own color and icon. Live updates, filters, one click
-  alert replay.
+* **Live numbers:** current viewers in large type (no Twitch sign-in needed), with followers
+  and subscribers below when Twitch is connected.
+* **Activity feed:** Sylva's activity, the same list every Sylva page shows: follows, subs,
+  gifted subs, bits, raids, redemptions, ad breaks, polls and more. Each kind is its own color
+  and icon. Live updates, filters, one click alert replay. Test events leave after 30 seconds.
 * **Quick actions:** mute or unmute alerts, pause or resume the alert queue, skip the current
   alert, reload overlays.
 * **Ad breaks:** a bar at the top shows when Twitch's next ad break runs, turns amber with a
@@ -85,15 +85,14 @@ program keeps the name `pine.exe` so that copies built before the rename can sti
 
 ## Sign in
 
-**StreamElements (required).** Open https://streamelements.com/dashboard/account/channels,
-click **Show secrets**, copy the **JWT token** and paste it into Cortex. It is stored in your
-system's credential store (Windows Credential Manager, macOS Keychain, or Secret Service on
-Linux). Treat it like a password.
+**Sylva (required).** Click **Sign in with Sylva** and approve Cortex in the browser page that
+opens (the code is filled in). The token is stored in your system's credential store (Windows
+Credential Manager, macOS Keychain, or Secret Service on Linux). You can remove Cortex any time
+under Connected apps in Sylva's settings.
 
-**Twitch (optional, needed to change your title and category).** Cortex shows your viewer count
-without it: it looks up your channel name from StreamElements on [DecAPI](https://decapi.me), a
-free public service. StreamElements has no public way to change the title or category, so
-that part goes through Twitch. Connect it from the Settings menu or the Stream info section:
+**Twitch (optional, needed for title, category, ad breaks and follower totals).** Cortex shows
+your viewer count without it: it looks up your channel name on [DecAPI](https://decapi.me), a
+free public service. Connect it from the Settings menu or the Stream info section:
 
 1. Go to https://dev.twitch.tv/console/apps and register an application.
 2. Set **Client Type** to **Public**. Any OAuth Redirect URL works, for example `http://localhost`.
@@ -106,7 +105,7 @@ To skip step 3 for everyone who uses your build, set `CORTEX_TWITCH_CLIENT_ID` w
 ## Develop
 
 ```
-cargo test --workspace      # 18 tests: REST shapes, websocket protocol, Twitch auth, viewer count
+cargo test --workspace      # Sylva event mapping, Twitch auth, viewer count
 cargo clippy --workspace --all-targets
 ```
 
@@ -114,8 +113,6 @@ The UI is static files in `ui/`, embedded at build time. Edit and re-run.
 
 ## Known limits
 
-* The mute and pause buttons show the state set from Cortex. If you mute alerts somewhere
-  else, the button will not know until you press it.
-* History loads the last 30 days, up to 100 items. New events stream in live after that.
-* There is no "play next" control yet, because no supported StreamElements endpoint for it
-  was found.
+* The mute and pause buttons read Sylva's state when Cortex opens. A change made elsewhere
+  shows after the next restart or button press.
+* History loads the newest 100 items. New events stream in live after that.
