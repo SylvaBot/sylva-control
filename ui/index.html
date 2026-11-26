@@ -75,6 +75,17 @@
       </header>
 
       <div class="content">
+        <section class="adbar" id="adbar" aria-label="Ad breaks" hidden>
+          <span class="adbar-icon"><svg><use href="#i-megaphone"/></svg></span>
+          <div class="adbar-text">
+            <b id="ad-title" aria-live="polite"></b>
+            <span id="ad-sub"></span>
+          </div>
+          <span class="adbar-time" id="ad-time"></span>
+          <button class="btn" type="button" id="ad-reconnect" hidden>Reconnect Twitch</button>
+          <div class="adbar-progress" aria-hidden="true"><span id="ad-progress"></span></div>
+        </section>
+
         <section class="hero" aria-label="Channel numbers">
           <div class="hero-top">
             <div class="hero-label">Viewers</div>
@@ -164,7 +175,7 @@
         <button class="icon-btn" id="twitch-close" title="Close"><svg><use href="#i-x"/></svg></button>
       </div>
       <h1>Connect Twitch</h1>
-      <p>Connecting lets Cortex change your stream title and category, and read your viewer count straight from Twitch. You need a free Twitch app Client ID, once.</p>
+      <p>Connecting lets Cortex change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
         <li>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</li>
         <li>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</li>

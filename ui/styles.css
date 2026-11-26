@@ -171,6 +171,40 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
   width: 100%; padding: 24px max(16px, calc((100% - 920px) / 2)) 32px;
 }
 
+/* Ad break bar: calm when the next break is far off, amber in the last five minutes, red while ads run */
+.adbar {
+  --c: var(--muted);
+  flex: none; position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  transition: background .2s, border-color .2s;
+}
+.adbar[hidden] { display: none; }
+.adbar.soon, .adbar.running {
+  background: color-mix(in srgb, var(--c) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--c) 45%, var(--border-2));
+}
+.adbar.soon { --c: var(--warn); }
+.adbar.running { --c: var(--danger); }
+.adbar-icon {
+  flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r);
+  background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c);
+}
+.adbar-icon svg { width: 16px; height: 16px; }
+.adbar.running .adbar-icon { animation: adpulse 1.6s ease-in-out infinite; }
+@keyframes adpulse { 50% { opacity: .55; } }
+.adbar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.adbar-text b { font-size: 13.5px; font-weight: 600; }
+.adbar.soon .adbar-text b, .adbar.running .adbar-text b { color: var(--c); }
+.adbar-text span { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adbar-time {
+  flex: none; font-size: 22px; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+}
+.adbar.soon .adbar-time, .adbar.running .adbar-time { color: var(--c); }
+.adbar-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.adbar-progress span { display: block; height: 100%; width: 0; background: var(--c); transition: width 1s linear; }
+.adbar:not(.soon):not(.running) .adbar-progress { display: none; }
+
 /* Viewer card: a large number, then the channel totals */
 .hero {
   flex: none; overflow: hidden;

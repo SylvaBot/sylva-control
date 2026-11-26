@@ -136,6 +136,7 @@ function applyAuth(a) {
   $("tw-connect-menu").hidden = !!a.twitch;
   $("se-signout").hidden = !se;
   loadChannelInfo();
+  refreshAds();
 }
 
 $("signin-form").addEventListener("submit", async (e) => {
@@ -789,6 +790,129 @@ $("tw-cancel").addEventListener("click", (e) => {
   e.preventDefault();
   cancelDeviceFlow();
 });
+
+// ---------- ad breaks ----------
+
+// Twitch's ad schedule says when the next break runs and when the last one started. It is
+// checked every 30 seconds, and every 5 seconds around a break so the bar switches quickly.
+// The countdown itself ticks locally every second.
+const AD_SOON_S = 5 * 60;
+let ads = null; // { schedule, needsReconnect }
+let adTimer = null;
+let adRun = 0;
+// The length of each upcoming break as it was announced, by start time, because Twitch's
+// `duration` describes the next break, not the one that is running.
+const adLengths = new Map();
+
+function nowSec() {
+  return Date.now() / 1000;
+}
+
+function clock(s) {
+  s = Math.max(0, Math.ceil(s));
+  const m = Math.floor(s / 60);
+  return m + ":" + String(s % 60).padStart(2, "0");
+}
+
+function minutes(s) {
+  const m = Math.round(s / 60);
+  if (m < 60) return m + " min";
+  const h = Math.floor(m / 60);
+  return h + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
+}
+
+function timeAt(unix) {
+  return new Date(unix * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/** The break running right now, as { start, length }, or null. */
+function runningAd(sch, now) {
+  if (!sch.lastAdAt) return null;
+  let length = 0;
+  for (const [at, len] of adLengths) if (Math.abs(at - sch.lastAdAt) <= 90) length = len;
+  length = length || sch.duration || 60;
+  return now < sch.lastAdAt + length ? { start: sch.lastAdAt, length } : null;
+}
+
+function renderAd() {
+  const bar = $("adbar");
+  const show = (state, title, sub, time, progress) => {
+    bar.hidden = false;
+    bar.className = "adbar" + (state ? " " + state : "");
+    if ($("ad-title").textContent !== title) $("ad-title").textContent = title;
+    $("ad-sub").textContent = sub;
+    $("ad-time").textContent = time;
+    $("ad-progress").style.width = Math.max(0, Math.min(100, progress * 100)) + "%";
+  };
+  $("ad-reconnect").hidden = !(ads && ads.needsReconnect);
+  if (!auth.twitch || !ads) {
+    bar.hidden = true;
+    return;
+  }
+  if (ads.needsReconnect) {
+    show("", "See ad breaks here", "Reconnect Twitch once so Cortex can read your ad schedule.", "", 0);
+    return;
+  }
+  const sch = ads.schedule;
+  const now = nowSec();
+  const run = sch && runningAd(sch, now);
+  if (run) {
+    const left = run.start + run.length - now;
+    show("running", "Ads are running", run.length + " second break. Back at " + timeAt(run.start + run.length) + ".",
+      clock(left) + " left", (now - run.start) / run.length);
+    return;
+  }
+  if (!sch || !sch.nextAdAt) {
+    bar.hidden = true;
+    return;
+  }
+  const until = sch.nextAdAt - now;
+  const len = sch.duration ? sch.duration + " second break" : "Ad break";
+  if (until <= 0) {
+    show("running", "Ad break starting", len + ", starting now.", "0:00", 1);
+  } else if (until <= AD_SOON_S) {
+    show("soon", "Ad break soon", len + " at " + timeAt(sch.nextAdAt) + ".", clock(until), 1 - until / AD_SOON_S);
+  } else {
+    const snoozes = sch.snoozeCount ? ", " + sch.snoozeCount + (sch.snoozeCount === 1 ? " snooze" : " snoozes") + " left" : "";
+    show("", "Next ad break", len + " at " + timeAt(sch.nextAdAt) + snoozes + ".", "in " + minutes(until), 0);
+  }
+}
+
+async function refreshAds() {
+  clearTimeout(adTimer);
+  const run = ++adRun;
+  if (!auth.twitch) {
+    ads = null;
+    renderAd();
+    return;
+  }
+  let next = 30000;
+  try {
+    const s = await invoke("get_ad_schedule");
+    if (run !== adRun) return;
+    ads = { schedule: s.schedule, needsReconnect: s.needsReconnect };
+    const sch = s.schedule;
+    if (sch && sch.nextAdAt && sch.duration) adLengths.set(sch.nextAdAt, sch.duration);
+    if (adLengths.size > 20) adLengths.delete(adLengths.keys().next().value);
+    // A saved sign-in without the ads permission stays that way until Twitch is reconnected.
+    if (s.needsReconnect) next = 0;
+    else if (sch) {
+      const now = nowSec();
+      if (runningAd(sch, now) || (sch.nextAdAt && sch.nextAdAt - now <= 90)) next = 5000;
+    }
+  } catch {
+    // Keep showing the last schedule; the next check usually works.
+  }
+  if (run !== adRun) return;
+  renderAd();
+  if (next) adTimer = setTimeout(refreshAds, next);
+}
+
+setInterval(() => {
+  if (ads && !$("adbar").hidden) renderAd();
+}, 1000);
+
+$("ad-reconnect").addEventListener("click", openTwitchDialog);
 
 // ---------- updates (git checkout installs) ----------
 

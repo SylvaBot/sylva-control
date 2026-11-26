@@ -239,6 +239,27 @@ pub async fn get_channel_info(state: State<'_, AppState>) -> CmdResult<Option<tw
     client.channel_info().await.map(Some).map_err(twitch_err)
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdStatus {
+    /// Twitch did not accept the saved sign-in for ads (it predates the ads permission).
+    needs_reconnect: bool,
+    schedule: Option<twitch::AdSchedule>,
+}
+
+/// The upcoming and the last ad break, for the ad indicator. `schedule` is `None` without Twitch.
+#[tauri::command]
+pub async fn get_ad_schedule(state: State<'_, AppState>) -> CmdResult<AdStatus> {
+    let Some(client) = state.twitch.read().await.clone() else {
+        return Ok(AdStatus { needs_reconnect: false, schedule: None });
+    };
+    match client.ad_schedule().await {
+        Ok(s) => Ok(AdStatus { needs_reconnect: false, schedule: Some(s) }),
+        Err(e) if e.is_unauthorized() => Ok(AdStatus { needs_reconnect: true, schedule: None }),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[tauri::command]
 pub async fn search_categories(state: State<'_, AppState>, query: String) -> CmdResult<Vec<twitch::Category>> {
     let query = query.trim().to_string();

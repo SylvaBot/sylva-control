@@ -12,6 +12,9 @@ is the desktop app in the Sylva family. It used to be called Pine.
   alert replay.
 * **Quick actions:** mute or unmute alerts, pause or resume the alert queue, skip the current
   alert, reload overlays.
+* **Ad breaks:** a bar at the top shows when Twitch's next ad break runs, turns amber with a
+  countdown in the last five minutes, and red with the time left while ads are running. Needs
+  Twitch connected; if you connected before this was added, click **Reconnect Twitch** once.
 * **Stream info:** change your Twitch title and category (with category search). The fields
   follow what is live on Twitch, refreshed every 30 seconds. Needs Twitch connected once.
 
