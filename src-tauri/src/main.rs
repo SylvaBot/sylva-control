@@ -1,16 +1,27 @@
 // Never open a console window on Windows, in debug or release builds.
 #![windows_subsystem = "windows"]
 
+use tauri_plugin_window_state::StateFlags;
+
 mod commands;
 mod secrets;
 mod state;
 mod updater;
+mod window;
 
 fn main() {
     updater::clean_up_old_build();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Remember the window's size, position and maximized state between launches.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    StateFlags::all() - StateFlags::VISIBLE - StateFlags::DECORATIONS,
+                )
+                .build(),
+        )
         .manage(state::AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::restore_session,
@@ -35,6 +46,7 @@ fn main() {
             commands::open_external,
             updater::check_for_update,
             updater::apply_update,
+            window::start_window_drag,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cortex");
