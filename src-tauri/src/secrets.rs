@@ -5,6 +5,7 @@ use pine_core::twitch::TwitchTokens;
 
 // Kept from when the app was called Pine, so saved sign-ins survive the rename.
 const SERVICE: &str = "app.pine.desktop";
+/// Saved by Cortex versions that signed in to StreamElements; removed on start.
 const SE_JWT: &str = "streamelements-jwt";
 const TWITCH: &str = "twitch-tokens";
 const SYLVA: &str = "sylva-token";
@@ -32,14 +33,6 @@ fn delete(name: &str) -> Result<(), String> {
         Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(format!("could not remove saved credentials: {e}")),
     }
-}
-
-pub fn load_se_jwt() -> Result<Option<String>, String> {
-    read(SE_JWT)
-}
-
-pub fn save_se_jwt(jwt: &str) -> Result<(), String> {
-    write(SE_JWT, jwt)
 }
 
 pub fn clear_se_jwt() -> Result<(), String> {

@@ -1,10 +1,9 @@
 //! Commands the window calls with `invoke`. Every error is returned as a readable string.
 
 use crate::secrets;
-use crate::state::{start_realtime, start_sylva, twitch_client, AppState, SeSession, SylvaSession};
+use crate::state::{start_sylva, twitch_client, AppState, SylvaSession};
 use pine_core::public::PublicViewers;
-use pine_core::se::{AlertAction, Channel, SeClient};
-use pine_core::sylva::{self, SylvaChannel, SylvaClient};
+use pine_core::sylva::{self, AlertState, SylvaChannel, SylvaClient};
 use pine_core::twitch::{self, DeviceCode};
 use pine_core::{Activity, Error};
 use serde::Serialize;
@@ -22,9 +21,11 @@ const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = match option_env!("CORTEX_TWITCH_
     None => option_env!("PINE_TWITCH_CLIENT_ID"),
 };
 
-fn se_err(e: Error) -> String {
+const SYLVA_GONE: &str = "Sylva no longer accepts Cortex. Sign in again.";
+
+fn sylva_err(e: Error) -> String {
     if e.is_unauthorized() {
-        "StreamElements rejected the token. Copy a fresh JWT from the dashboard and sign in again.".into()
+        SYLVA_GONE.into()
     } else {
         e.to_string()
     }
@@ -48,16 +49,14 @@ pub struct TwitchUser {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthState {
-    streamelements: Option<Channel>,
-    twitch: Option<TwitchUser>,
     sylva: Option<SylvaChannel>,
+    twitch: Option<TwitchUser>,
     default_twitch_client_id: Option<String>,
     /// A problem found while restoring saved sign-ins, shown once in the UI.
     notice: Option<String>,
 }
 
 async fn auth_state(state: &AppState, notice: Option<String>) -> AuthState {
-    let streamelements = state.se.read().await.as_ref().map(|s| s.channel.clone());
     let sylva = state.sylva.read().await.as_ref().map(|s| s.channel.clone());
     let twitch = match state.twitch.read().await.as_ref() {
         Some(c) => {
@@ -67,27 +66,10 @@ async fn auth_state(state: &AppState, notice: Option<String>) -> AuthState {
         None => None,
     };
     AuthState {
-        streamelements,
-        twitch,
         sylva,
+        twitch,
         default_twitch_client_id: DEFAULT_TWITCH_CLIENT_ID.map(str::to_string),
         notice,
-    }
-}
-
-async fn open_se_session(app: &AppHandle, state: &AppState, client: SeClient, channel: Channel) {
-    let realtime = start_realtime(app, &client, &channel);
-    let old = state.se.write().await.replace(SeSession { client, channel, realtime });
-    if let Some(old) = old {
-        old.realtime.cancel();
-    }
-}
-
-fn sylva_err(e: Error) -> String {
-    if e.is_unauthorized() {
-        "Sylva no longer accepts Cortex. Connect Sylva again in Settings.".into()
-    } else {
-        e.to_string()
     }
 }
 
@@ -107,24 +89,8 @@ async fn open_sylva_session(app: &AppHandle, state: &AppState, client: SylvaClie
 #[tauri::command]
 pub async fn restore_session(app: AppHandle, state: State<'_, AppState>) -> CmdResult<AuthState> {
     let mut notice = None;
-
-    if state.se.read().await.is_none() {
-        match secrets::load_se_jwt() {
-            Ok(Some(jwt)) => match SeClient::new(jwt) {
-                Ok(client) => match client.me().await {
-                    Ok(channel) => open_se_session(&app, &state, client, channel).await,
-                    Err(e) if e.is_unauthorized() => {
-                        let _ = secrets::clear_se_jwt();
-                        notice = Some("Your saved StreamElements token has expired. Please sign in again.".into());
-                    }
-                    Err(e) => notice = Some(format!("Could not reach StreamElements: {e}")),
-                },
-                Err(e) => notice = Some(e.to_string()),
-            },
-            Ok(None) => {}
-            Err(e) => notice = Some(e),
-        }
-    }
+    // Cortex used to sign in to StreamElements. That token is not used any more.
+    let _ = secrets::clear_se_jwt();
 
     if state.sylva.read().await.is_none() {
         match secrets::load_sylva() {
@@ -133,14 +99,14 @@ pub async fn restore_session(app: AppHandle, state: State<'_, AppState>) -> CmdR
                     Ok(()) => {}
                     Err(e) if e.is_unauthorized() => {
                         let _ = secrets::clear_sylva();
-                        notice = notice.or(Some("Sylva no longer accepts Cortex. Connect Sylva again in Settings.".into()));
+                        notice = Some(SYLVA_GONE.into());
                     }
-                    Err(e) => notice = notice.or(Some(format!("Could not reach Sylva: {e}"))),
+                    Err(e) => notice = Some(format!("Could not reach Sylva: {e}")),
                 },
-                Err(e) => notice = notice.or(Some(e.to_string())),
+                Err(e) => notice = Some(e.to_string()),
             },
             Ok(None) => {}
-            Err(e) => notice = notice.or(Some(e)),
+            Err(e) => notice = Some(e),
         }
     }
 
@@ -158,47 +124,73 @@ pub async fn restore_session(app: AppHandle, state: State<'_, AppState>) -> CmdR
     Ok(auth_state(&state, notice).await)
 }
 
-/// Validate a StreamElements JWT, save it, and go live.
+/// Start Sylva sign-in: opens the approval page with the code filled in.
+/// Finishes in the background and emits `sylva-auth` with `{ ok, name }` or `{ ok: false, error }`.
 #[tauri::command]
-pub async fn se_sign_in(app: AppHandle, state: State<'_, AppState>, token: String) -> CmdResult<AuthState> {
-    let client = SeClient::new(token).map_err(|e| e.to_string())?;
-    let channel = client.me().await.map_err(se_err)?;
-    secrets::save_se_jwt(client.jwt())?;
-    open_se_session(&app, &state, client, channel).await;
-    Ok(auth_state(&state, None).await)
-}
-
-#[tauri::command]
-pub async fn se_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState> {
-    if let Some(s) = state.se.write().await.take() {
-        s.realtime.cancel();
+pub async fn sylva_sign_in(app: AppHandle, state: State<'_, AppState>) -> CmdResult<sylva::DeviceCode> {
+    let http = sylva::http_client().map_err(|e| e.to_string())?;
+    let code = sylva::start_device_flow(&http, sylva::BASE).await.map_err(|e| e.to_string())?;
+    let cancel = CancellationToken::new();
+    if let Some(old) = state.sylva_login.lock().await.replace(cancel.clone()) {
+        old.cancel();
     }
-    secrets::clear_se_jwt()?;
+    if let Err(e) = app.opener().open_url(code.verification_uri_complete.clone(), None::<&str>) {
+        log::warn!("could not open the browser: {e}");
+    }
+    let app2 = app.clone();
+    let code2 = code.clone();
+    tauri::async_runtime::spawn(async move {
+        use tauri::Manager;
+        let payload = match sylva::finish_device_flow(&http, sylva::BASE, &code2, &cancel).await {
+            Ok(token) => match (secrets::save_sylva(&token), SylvaClient::new(token)) {
+                (Ok(()), Ok(client)) => {
+                    let state = app2.state::<AppState>();
+                    match open_sylva_session(&app2, &state, client).await {
+                        Ok(()) => {
+                            let name = state.sylva.read().await.as_ref().and_then(|s| s.channel.name.clone());
+                            serde_json::json!({ "ok": true, "name": name })
+                        }
+                        Err(e) => serde_json::json!({ "ok": false, "error": sylva_err(e) }),
+                    }
+                }
+                (Err(e), _) => serde_json::json!({ "ok": false, "error": e }),
+                (_, Err(e)) => serde_json::json!({ "ok": false, "error": e.to_string() }),
+            },
+            Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }),
+        };
+        let _ = app2.emit("sylva-auth", payload);
+    });
+    Ok(code)
+}
+
+#[tauri::command]
+pub async fn sylva_cancel_sign_in(state: State<'_, AppState>) -> CmdResult<()> {
+    if let Some(c) = state.sylva_login.lock().await.take() {
+        c.cancel();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn sylva_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState> {
+    if let Some(s) = state.sylva.write().await.take() {
+        s.live.cancel();
+    }
+    secrets::clear_sylva()?;
     Ok(auth_state(&state, None).await)
 }
 
-async fn with_se<T, F, Fut>(state: &AppState, f: F) -> CmdResult<T>
-where
-    F: FnOnce(SeClient, String) -> Fut,
-    Fut: std::future::Future<Output = Result<T, Error>>,
-{
-    let (client, channel_id) = {
-        let guard = state.se.read().await;
-        let s = guard.as_ref().ok_or("Sign in to StreamElements first.")?;
-        (s.client.clone(), s.channel.id.clone())
-    };
-    f(client, channel_id).await.map_err(se_err)
+async fn with_sylva(state: &AppState) -> CmdResult<(SylvaClient, String)> {
+    let guard = state.sylva.read().await;
+    let s = guard.as_ref().ok_or("Sign in to Sylva first.")?;
+    Ok((s.client.clone(), s.channel.key.clone()))
 }
 
-/// Recent activity (last 30 days), newest first.
+/// Recent activity, newest first: the same list every Sylva page shows.
 #[tauri::command]
 pub async fn get_feed(state: State<'_, AppState>, limit: Option<u32>) -> CmdResult<Vec<Activity>> {
-    let limit = limit.unwrap_or(100);
-    let sylva = state.sylva.read().await.as_ref().map(|s| (s.client.clone(), s.channel.key.clone()));
-    if let Some((client, key)) = sylva {
-        return client.history(&key, limit.min(100)).await.map(|(a, _)| a).map_err(sylva_err);
-    }
-    with_se(&state, |c, ch| async move { c.activities(&ch, limit, 30).await }).await
+    let (client, key) = with_sylva(&state).await?;
+    client.history(&key, limit.unwrap_or(100).min(100)).await.map(|(a, _)| a).map_err(sylva_err)
 }
 
 #[derive(Serialize, Default)]
@@ -206,21 +198,18 @@ pub async fn get_feed(state: State<'_, AppState>, limit: Option<u32>) -> CmdResu
 pub struct Stats {
     followers: Option<u64>,
     subscribers: Option<u64>,
-    /// New followers and subs in the current StreamElements session.
-    followers_session: Option<u64>,
-    subscribers_session: Option<u64>,
 }
 
-/// Follower and subscriber totals from StreamElements.
+/// Follower and subscriber totals, from Twitch. Empty without a Twitch connection.
 #[tauri::command]
 pub async fn get_stats(state: State<'_, AppState>) -> CmdResult<Stats> {
-    let t = with_se(&state, |c, ch| async move { c.session_totals(&ch).await }).await?;
-    Ok(Stats {
-        followers: t.follower_total,
-        subscribers: t.subscriber_total,
-        followers_session: t.follower_session,
-        subscribers_session: t.subscriber_session,
-    })
+    let Some(client) = state.twitch.read().await.clone() else {
+        return Ok(Stats::default());
+    };
+    let followers = client.followers(None).await.map_err(twitch_err)?.total;
+    // Reading subscribers needs the streamer's own sign-in; leave it empty otherwise.
+    let subscribers = client.subscribers(None).await.ok().and_then(|p| p.total);
+    Ok(Stats { followers, subscribers })
 }
 
 #[derive(Serialize)]
@@ -235,7 +224,7 @@ pub struct Viewers {
 }
 
 /// Live viewer count. Uses the Twitch API when Twitch is connected; otherwise looks up the
-/// StreamElements channel's Twitch name in a public service, so no Twitch sign-in is needed.
+/// Sylva channel's Twitch name in a public service, so no Twitch sign-in is needed.
 #[tauri::command]
 pub async fn get_viewers(state: State<'_, AppState>) -> CmdResult<Viewers> {
     if let Some(client) = state.twitch.read().await.clone() {
@@ -243,13 +232,9 @@ pub async fn get_viewers(state: State<'_, AppState>) -> CmdResult<Viewers> {
         return Ok(Viewers { source: "twitch", live: count.is_some(), viewers: count });
     }
     let login = {
-        let guard = state.se.read().await;
-        let Some(s) = guard.as_ref() else {
-            return Ok(Viewers { source: "none", live: false, viewers: None });
-        };
-        let twitch = s.channel.provider.as_deref().is_none_or(|p| p.eq_ignore_ascii_case("twitch"));
-        match (&s.channel.username, twitch) {
-            (Some(name), true) => name.clone(),
+        let guard = state.sylva.read().await;
+        match guard.as_ref().and_then(|s| s.channel.login.clone()) {
+            Some(login) if s_is_twitch(guard.as_ref().map(|s| s.channel.key.as_str())) => login,
             _ => return Ok(Viewers { source: "none", live: false, viewers: None }),
         }
     };
@@ -265,6 +250,10 @@ pub async fn get_viewers(state: State<'_, AppState>) -> CmdResult<Viewers> {
         .await
         .map_err(|e| format!("Could not get the viewer count: {e}"))?;
     Ok(Viewers { source: "public", live: count.is_some(), viewers: count })
+}
+
+fn s_is_twitch(key: Option<&str>) -> bool {
+    key.is_some_and(|k| k.starts_with("twitch:"))
 }
 
 async fn twitch_client_or_err(state: &AppState) -> CmdResult<std::sync::Arc<twitch::TwitchClient>> {
@@ -346,24 +335,37 @@ pub async fn update_channel(
     client.channel_info().await.map_err(twitch_err)
 }
 
+/// Pause, resume, mute, unmute or skip Sylva's alert queue. Returns its state.
 #[tauri::command]
-pub async fn alert_action(state: State<'_, AppState>, action: AlertAction) -> CmdResult<()> {
-    with_se(&state, |c, ch| async move { c.alert_action(&ch, action).await }).await
+pub async fn alert_action(state: State<'_, AppState>, action: String) -> CmdResult<AlertState> {
+    let action = match action.as_str() {
+        "unpause" | "resume" => "resume",
+        "pause" | "mute" | "unmute" | "skip" => action.as_str(),
+        other => return Err(format!("unknown action: {other}")),
+    };
+    let (client, key) = with_sylva(&state).await?;
+    client.alerts(&key, action).await.map_err(sylva_err)
 }
 
+/// The alert queue now, so the mute and pause buttons start right.
+#[tauri::command]
+pub async fn get_alert_state(state: State<'_, AppState>) -> CmdResult<AlertState> {
+    let (client, key) = with_sylva(&state).await?;
+    client.alert_state(&key).await.map_err(sylva_err)
+}
+
+/// Every overlay in OBS loads its page again.
 #[tauri::command]
 pub async fn reload_overlays(state: State<'_, AppState>) -> CmdResult<()> {
-    with_se(&state, |c, ch| async move { c.reload_overlays(&ch).await }).await
+    let (client, key) = with_sylva(&state).await?;
+    client.alerts(&key, "reload").await.map(|_| ()).map_err(sylva_err)
 }
 
 #[tauri::command]
 pub async fn replay_activity(state: State<'_, AppState>, id: String) -> CmdResult<()> {
-    let sylva = state.sylva.read().await.as_ref().map(|s| (s.client.clone(), s.channel.key.clone()));
-    if let Some((client, key)) = sylva {
-        let seq: u64 = id.parse().map_err(|_| "This event cannot be replayed.".to_string())?;
-        return client.replay(&key, seq).await.map_err(sylva_err);
-    }
-    with_se(&state, |c, ch| async move { c.replay(&ch, &id).await }).await
+    let seq: u64 = id.parse().map_err(|_| "This event cannot be replayed.".to_string())?;
+    let (client, key) = with_sylva(&state).await?;
+    client.replay(&key, seq).await.map_err(sylva_err)
 }
 
 /// Start Twitch device sign-in. Returns the code to show; finishes in the background and
@@ -432,62 +434,6 @@ pub async fn twitch_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState>
     Ok(auth_state(&state, None).await)
 }
 
-/// Start Sylva sign-in: opens the approval page with the code filled in.
-/// Finishes in the background and emits `sylva-auth` with `{ ok, name }` or `{ ok: false, error }`.
-#[tauri::command]
-pub async fn sylva_sign_in(app: AppHandle, state: State<'_, AppState>) -> CmdResult<sylva::DeviceCode> {
-    let http = sylva::http_client().map_err(|e| e.to_string())?;
-    let code = sylva::start_device_flow(&http, sylva::BASE).await.map_err(|e| e.to_string())?;
-    let cancel = CancellationToken::new();
-    if let Some(old) = state.sylva_login.lock().await.replace(cancel.clone()) {
-        old.cancel();
-    }
-    if let Err(e) = app.opener().open_url(code.verification_uri_complete.clone(), None::<&str>) {
-        log::warn!("could not open the browser: {e}");
-    }
-    let app2 = app.clone();
-    let code2 = code.clone();
-    tauri::async_runtime::spawn(async move {
-        use tauri::Manager;
-        let payload = match sylva::finish_device_flow(&http, sylva::BASE, &code2, &cancel).await {
-            Ok(token) => match (secrets::save_sylva(&token), SylvaClient::new(token)) {
-                (Ok(()), Ok(client)) => {
-                    let state = app2.state::<AppState>();
-                    match open_sylva_session(&app2, &state, client).await {
-                        Ok(()) => {
-                            let name = state.sylva.read().await.as_ref().and_then(|s| s.channel.name.clone());
-                            serde_json::json!({ "ok": true, "name": name })
-                        }
-                        Err(e) => serde_json::json!({ "ok": false, "error": sylva_err(e) }),
-                    }
-                }
-                (Err(e), _) => serde_json::json!({ "ok": false, "error": e }),
-                (_, Err(e)) => serde_json::json!({ "ok": false, "error": e.to_string() }),
-            },
-            Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }),
-        };
-        let _ = app2.emit("sylva-auth", payload);
-    });
-    Ok(code)
-}
-
-#[tauri::command]
-pub async fn sylva_cancel_sign_in(state: State<'_, AppState>) -> CmdResult<()> {
-    if let Some(c) = state.sylva_login.lock().await.take() {
-        c.cancel();
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn sylva_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState> {
-    if let Some(s) = state.sylva.write().await.take() {
-        s.live.cancel();
-    }
-    secrets::clear_sylva()?;
-    Ok(auth_state(&state, None).await)
-}
-
 /// One page of subscribers, followers or chatters from Twitch.
 #[tauri::command]
 pub async fn get_audience(state: State<'_, AppState>, kind: String, cursor: Option<String>) -> CmdResult<Value> {
@@ -510,7 +456,7 @@ pub async fn get_audience(state: State<'_, AppState>, kind: String, cursor: Opti
 /// Open a help link in the system browser. Only known hosts are allowed.
 #[tauri::command]
 pub fn open_external(app: AppHandle, url: String) -> CmdResult<()> {
-    const ALLOWED: &[&str] = &["streamelements.com", "dev.twitch.tv", "www.twitch.tv", "twitch.tv", "sylva-edge.haruxe.workers.dev"];
+    const ALLOWED: &[&str] = &["dev.twitch.tv", "www.twitch.tv", "twitch.tv", "sylva-edge.haruxe.workers.dev"];
     let parsed = url::Url::parse(&url).map_err(|_| "invalid link".to_string())?;
     let host = parsed.host_str().unwrap_or_default();
     let ok = parsed.scheme() == "https"

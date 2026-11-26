@@ -14,8 +14,6 @@ fn main() {
         .manage(state::AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::restore_session,
-            commands::se_sign_in,
-            commands::se_sign_out,
             commands::get_feed,
             commands::get_stats,
             commands::get_viewers,
@@ -24,6 +22,7 @@ fn main() {
             commands::search_categories,
             commands::update_channel,
             commands::alert_action,
+            commands::get_alert_state,
             commands::reload_overlays,
             commands::replay_activity,
             commands::sylva_sign_in,

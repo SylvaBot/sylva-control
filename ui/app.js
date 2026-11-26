@@ -165,36 +165,36 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- auth ----------
 
-let auth = { streamelements: null, twitch: null, sylva: null, defaultTwitchClientId: null };
+let auth = { sylva: null, twitch: null, defaultTwitchClientId: null };
 
 function applyAuth(a) {
+  const before = auth.sylva ? auth.sylva.key : null;
   auth = a;
-  const se = a.streamelements;
-  $("signin").hidden = !!se;
-  const name = se ? se.displayName || se.username || "Streamer" : "";
+  const sy = a.sylva;
+  $("signin").hidden = !!sy;
+  const name = sy ? sy.name || sy.login || "Streamer" : "";
   $("brand-channel").textContent = name;
-  const av = avatar(name || "?", se && se.avatar);
+  const av = avatar(name || "?", sy && sy.avatar);
   av.id = "user-avatar";
   $("user-avatar").replaceWith(av);
-  $("menu-se-name").textContent = se ? name : "-";
+  $("menu-sy-name").textContent = sy ? name : "-";
   $("menu-tw-name").textContent = a.twitch ? a.twitch.login : "Not connected";
   $("tw-signout").hidden = !a.twitch;
   $("tw-connect-menu").hidden = !!a.twitch;
-  $("se-signout").hidden = !se;
-  const sy = a.sylva;
-  $("menu-sy-name").textContent = sy ? sy.name || sy.login || "Connected" : "Not connected";
   $("sy-signout").hidden = !sy;
-  $("sy-connect").hidden = !!sy;
-  // The feed comes from Sylva when it is connected: start it over when that changes.
-  const source = sy ? "sylva:" + sy.key : "se";
-  if (feedSource !== null && feedSource !== source) {
+  // Another channel (or signed out): start the feed over.
+  if ((sy ? sy.key : null) !== before) {
     feed = [];
     renderFeed();
   }
-  feedSource = source;
   loadChannelInfo();
   refreshAds();
+  refreshAlertState();
 }
+
+// ---------- signing in with Sylva ----------
+// Sylva is where alerts, overlays and the bot live. Cortex shows Sylva's
+// activity, the same feed every Sylva page shows, and controls its alerts.
 
 $("signin-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -202,30 +202,24 @@ $("signin-form").addEventListener("submit", async (e) => {
   const err = $("signin-error");
   err.hidden = true;
   btn.disabled = true;
-  btn.textContent = "Checking token...";
+  btn.textContent = "Waiting for the browser...";
   try {
-    const a = await invoke("se_sign_in", { token: $("se-token").value });
-    $("se-token").value = "";
-    applyAuth(a);
-    toast("Signed in as " + (a.streamelements.displayName || a.streamelements.username));
-    await loadFeed();
-    refreshStats();
-    refreshViewers();
+    const code = await invoke("sylva_sign_in");
+    const hint = $("signin-code");
+    hint.textContent = "Approve Cortex in your browser. Your code is " + code.user_code + ".";
+    hint.hidden = false;
   } catch (x) {
-    err.textContent = String(x);
+    err.textContent = "Could not start sign-in: " + x;
     err.hidden = false;
-  } finally {
     btn.disabled = false;
-    btn.textContent = "Sign in";
+    btn.textContent = "Sign in with Sylva";
   }
 });
 
-$("se-signout").addEventListener("click", async () => {
+$("sy-signout").addEventListener("click", async () => {
   closeMenus();
   try {
-    applyAuth(await invoke("se_sign_out"));
-    feed = [];
-    renderFeed();
+    applyAuth(await invoke("sylva_sign_out"));
     resetStats();
   } catch (x) {
     toast(String(x), true);
@@ -242,47 +236,12 @@ $("tw-signout").addEventListener("click", async () => {
   }
 });
 
-// ---------- Sylva connection ----------
-// Sylva is where alerts, overlays and the bot live. Connected, Cortex shows
-// Sylva's activity, the same feed every Sylva page shows.
-
-$("sy-connect").addEventListener("click", async () => {
-  const btn = $("sy-connect");
-  btn.disabled = true;
-  try {
-    const code = await invoke("sylva_sign_in");
-    toast("Approve Cortex in your browser. Code " + code.user_code);
-  } catch (x) {
-    toast("Could not start Sylva sign-in: " + x, true);
-    btn.disabled = false;
-  }
-});
-
-$("sy-signout").addEventListener("click", async () => {
-  closeMenus();
-  try {
-    applyAuth(await invoke("sylva_sign_out"));
-    await loadFeed();
-  } catch (x) {
-    toast(String(x), true);
-  }
-});
-
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[data-ext]");
   if (!a) return;
   e.preventDefault();
   invoke("open_external", { url: a.dataset.ext }).catch((x) => toast(String(x), true));
 });
-
-// ---------- realtime status ----------
-
-function setRealtime(s) {
-  // Cortex reconnects on its own, so only a rejected token needs the user's attention.
-  if (s.state === "unauthorized") {
-    toast("Live events stopped: " + (s.message || "token rejected") + ". Sign in again.", true);
-  }
-}
 
 // ---------- activity feed ----------
 
@@ -301,7 +260,6 @@ const MAX_ITEMS = 500;
 const DAY = 86400000;
 
 let feed = [];
-let feedSource = null;
 // Test events leave the feed 30 seconds after they came in, as on Sylva.
 const TEST_TTL = 30000;
 // Groups the user picked. Empty means everything.
@@ -406,7 +364,7 @@ function describe(a) {
       if (a.sender) { b(a.sender); t(" gifted a sub to "); b(name); }
       else { b(name); t(" got a gifted sub"); }
       if (tier) pills.push(tier);
-      // StreamElements fills in an automatic "X gifted a sub to Y" message; the sentence already says it.
+      // Twitch fills in an automatic "X gifted a sub to Y" message; the sentence already says it.
       if (/gift/i.test(message || "")) message = null;
       break;
     case "communityGift":
@@ -622,7 +580,7 @@ function addLive(a) {
 }
 
 async function loadFeed() {
-  if (!auth.streamelements && !auth.sylva) return;
+  if (!auth.sylva) return;
   const btn = $("feed-refresh");
   btn.classList.add("spin");
   try {
@@ -666,7 +624,7 @@ let statsTimer = null;
 async function refreshStats() {
   clearTimeout(statsTimer);
   statsTimer = setTimeout(refreshStats, 60000);
-  if (!auth.streamelements) return;
+  if (!auth.sylva) return;
   try {
     const s = await invoke("get_stats");
     $("stat-followers").textContent = num(s.followers);
@@ -708,7 +666,7 @@ async function refreshViewers() {
       n.textContent = "-";
       n.title = "";
       setLive(null);
-      setViewerNote(auth.streamelements ? "No Twitch channel on this StreamElements account" : null);
+      setViewerNote(auth.sylva ? "No Twitch channel on this Sylva account" : null);
       return;
     }
     // Offline shows a dash, not 0, so it never looks like an empty stream.
@@ -760,6 +718,25 @@ function toggleButton(btn, actions, labels, icons, toasts) {
     btn.querySelector("span").textContent = now ? labels[1] : labels[0];
     btn.querySelector("use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
   });
+}
+
+/** Show a toggle as on or off. */
+function setToggle(btn, on, labels, icons) {
+  btn.setAttribute("aria-pressed", String(on));
+  btn.querySelector("span").textContent = on ? labels[1] : labels[0];
+  btn.querySelector("use").setAttribute("href", "#" + (on ? icons[1] : icons[0]));
+}
+
+/** Start the mute and pause buttons the way Sylva's queue is now. */
+async function refreshAlertState() {
+  if (!auth.sylva) return;
+  try {
+    const s = await invoke("get_alert_state");
+    setToggle($("act-mute"), s.muted, ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"]);
+    setToggle($("act-pause"), s.paused, ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"]);
+  } catch (x) {
+    console.warn(x);
+  }
 }
 
 toggleButton($("act-mute"), ["mute", "unmute"], ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"], ["Alerts muted", "Alerts unmuted"]);
@@ -1266,18 +1243,24 @@ async function start() {
     addLive(e.payload);
     refreshStatsSoon();
   });
-  await listen("realtime-status", (e) => setRealtime(e.payload));
   await listen("sylva-status", (e) => {
-    if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Cortex. Connect Sylva again in Settings.", true);
+    if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Cortex. Sign out and sign in again.", true);
   });
   await listen("sylva-auth", async (e) => {
-    $("sy-connect").disabled = false;
+    const btn = $("signin-submit");
+    btn.disabled = false;
+    btn.textContent = "Sign in with Sylva";
+    $("signin-code").hidden = true;
     if (e.payload.ok) {
-      toast("Sylva connected" + (e.payload.name ? " as " + e.payload.name : "") + ". Activity now comes from Sylva.");
+      toast("Signed in" + (e.payload.name ? " as " + e.payload.name : ""));
       applyAuth(await invoke("restore_session"));
       await loadFeed();
+      refreshStats();
+      refreshViewers();
     } else {
-      toast("Sylva sign-in failed: " + e.payload.error, true);
+      const err = $("signin-error");
+      err.textContent = "Sign-in failed: " + e.payload.error;
+      err.hidden = false;
     }
   });
   await listen("update-status", (e) => showUpdateStatus(e.payload));
@@ -1289,6 +1272,7 @@ async function start() {
       toast("Twitch connected as " + e.payload.login);
       applyAuth(await invoke("restore_session"));
       refreshViewers();
+      refreshStats();
     } else {
       toast("Twitch sign-in failed: " + e.payload.error, true);
     }
