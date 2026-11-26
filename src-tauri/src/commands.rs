@@ -1,9 +1,10 @@
 //! Commands the window calls with `invoke`. Every error is returned as a readable string.
 
 use crate::secrets;
-use crate::state::{start_realtime, twitch_client, AppState, SeSession};
+use crate::state::{start_realtime, start_sylva, twitch_client, AppState, SeSession, SylvaSession};
 use pine_core::public::PublicViewers;
 use pine_core::se::{AlertAction, Channel, SeClient};
+use pine_core::sylva::{self, SylvaChannel, SylvaClient};
 use pine_core::twitch::{self, DeviceCode};
 use pine_core::{Activity, Error};
 use serde::Serialize;
@@ -49,6 +50,7 @@ pub struct TwitchUser {
 pub struct AuthState {
     streamelements: Option<Channel>,
     twitch: Option<TwitchUser>,
+    sylva: Option<SylvaChannel>,
     default_twitch_client_id: Option<String>,
     /// A problem found while restoring saved sign-ins, shown once in the UI.
     notice: Option<String>,
@@ -56,6 +58,7 @@ pub struct AuthState {
 
 async fn auth_state(state: &AppState, notice: Option<String>) -> AuthState {
     let streamelements = state.se.read().await.as_ref().map(|s| s.channel.clone());
+    let sylva = state.sylva.read().await.as_ref().map(|s| s.channel.clone());
     let twitch = match state.twitch.read().await.as_ref() {
         Some(c) => {
             let t = c.tokens().await;
@@ -66,6 +69,7 @@ async fn auth_state(state: &AppState, notice: Option<String>) -> AuthState {
     AuthState {
         streamelements,
         twitch,
+        sylva,
         default_twitch_client_id: DEFAULT_TWITCH_CLIENT_ID.map(str::to_string),
         notice,
     }
@@ -77,6 +81,26 @@ async fn open_se_session(app: &AppHandle, state: &AppState, client: SeClient, ch
     if let Some(old) = old {
         old.realtime.cancel();
     }
+}
+
+fn sylva_err(e: Error) -> String {
+    if e.is_unauthorized() {
+        "Sylva no longer accepts Cortex. Connect Sylva again in Settings.".into()
+    } else {
+        e.to_string()
+    }
+}
+
+/// Check a Sylva token, find the channel and start the live feed from now.
+async fn open_sylva_session(app: &AppHandle, state: &AppState, client: SylvaClient) -> Result<(), Error> {
+    let channel = client.channel().await?;
+    let (_, head) = client.history(&channel.key, 1).await?;
+    let live = start_sylva(app, &client, &channel.key, head);
+    let old = state.sylva.write().await.replace(SylvaSession { client, channel, live });
+    if let Some(old) = old {
+        old.live.cancel();
+    }
+    Ok(())
 }
 
 /// Called once when the window loads: restores saved sign-ins.
@@ -99,6 +123,24 @@ pub async fn restore_session(app: AppHandle, state: State<'_, AppState>) -> CmdR
             },
             Ok(None) => {}
             Err(e) => notice = Some(e),
+        }
+    }
+
+    if state.sylva.read().await.is_none() {
+        match secrets::load_sylva() {
+            Ok(Some(token)) => match SylvaClient::new(token) {
+                Ok(client) => match open_sylva_session(&app, &state, client).await {
+                    Ok(()) => {}
+                    Err(e) if e.is_unauthorized() => {
+                        let _ = secrets::clear_sylva();
+                        notice = notice.or(Some("Sylva no longer accepts Cortex. Connect Sylva again in Settings.".into()));
+                    }
+                    Err(e) => notice = notice.or(Some(format!("Could not reach Sylva: {e}"))),
+                },
+                Err(e) => notice = notice.or(Some(e.to_string())),
+            },
+            Ok(None) => {}
+            Err(e) => notice = notice.or(Some(e)),
         }
     }
 
@@ -152,6 +194,10 @@ where
 #[tauri::command]
 pub async fn get_feed(state: State<'_, AppState>, limit: Option<u32>) -> CmdResult<Vec<Activity>> {
     let limit = limit.unwrap_or(100);
+    let sylva = state.sylva.read().await.as_ref().map(|s| (s.client.clone(), s.channel.key.clone()));
+    if let Some((client, key)) = sylva {
+        return client.history(&key, limit.min(100)).await.map(|(a, _)| a).map_err(sylva_err);
+    }
     with_se(&state, |c, ch| async move { c.activities(&ch, limit, 30).await }).await
 }
 
@@ -312,6 +358,11 @@ pub async fn reload_overlays(state: State<'_, AppState>) -> CmdResult<()> {
 
 #[tauri::command]
 pub async fn replay_activity(state: State<'_, AppState>, id: String) -> CmdResult<()> {
+    let sylva = state.sylva.read().await.as_ref().map(|s| (s.client.clone(), s.channel.key.clone()));
+    if let Some((client, key)) = sylva {
+        let seq: u64 = id.parse().map_err(|_| "This event cannot be replayed.".to_string())?;
+        return client.replay(&key, seq).await.map_err(sylva_err);
+    }
     with_se(&state, |c, ch| async move { c.replay(&ch, &id).await }).await
 }
 
@@ -381,6 +432,62 @@ pub async fn twitch_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState>
     Ok(auth_state(&state, None).await)
 }
 
+/// Start Sylva sign-in: opens the approval page with the code filled in.
+/// Finishes in the background and emits `sylva-auth` with `{ ok, name }` or `{ ok: false, error }`.
+#[tauri::command]
+pub async fn sylva_sign_in(app: AppHandle, state: State<'_, AppState>) -> CmdResult<sylva::DeviceCode> {
+    let http = sylva::http_client().map_err(|e| e.to_string())?;
+    let code = sylva::start_device_flow(&http, sylva::BASE).await.map_err(|e| e.to_string())?;
+    let cancel = CancellationToken::new();
+    if let Some(old) = state.sylva_login.lock().await.replace(cancel.clone()) {
+        old.cancel();
+    }
+    if let Err(e) = app.opener().open_url(code.verification_uri_complete.clone(), None::<&str>) {
+        log::warn!("could not open the browser: {e}");
+    }
+    let app2 = app.clone();
+    let code2 = code.clone();
+    tauri::async_runtime::spawn(async move {
+        use tauri::Manager;
+        let payload = match sylva::finish_device_flow(&http, sylva::BASE, &code2, &cancel).await {
+            Ok(token) => match (secrets::save_sylva(&token), SylvaClient::new(token)) {
+                (Ok(()), Ok(client)) => {
+                    let state = app2.state::<AppState>();
+                    match open_sylva_session(&app2, &state, client).await {
+                        Ok(()) => {
+                            let name = state.sylva.read().await.as_ref().and_then(|s| s.channel.name.clone());
+                            serde_json::json!({ "ok": true, "name": name })
+                        }
+                        Err(e) => serde_json::json!({ "ok": false, "error": sylva_err(e) }),
+                    }
+                }
+                (Err(e), _) => serde_json::json!({ "ok": false, "error": e }),
+                (_, Err(e)) => serde_json::json!({ "ok": false, "error": e.to_string() }),
+            },
+            Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }),
+        };
+        let _ = app2.emit("sylva-auth", payload);
+    });
+    Ok(code)
+}
+
+#[tauri::command]
+pub async fn sylva_cancel_sign_in(state: State<'_, AppState>) -> CmdResult<()> {
+    if let Some(c) = state.sylva_login.lock().await.take() {
+        c.cancel();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn sylva_sign_out(state: State<'_, AppState>) -> CmdResult<AuthState> {
+    if let Some(s) = state.sylva.write().await.take() {
+        s.live.cancel();
+    }
+    secrets::clear_sylva()?;
+    Ok(auth_state(&state, None).await)
+}
+
 /// One page of subscribers, followers or chatters from Twitch.
 #[tauri::command]
 pub async fn get_audience(state: State<'_, AppState>, kind: String, cursor: Option<String>) -> CmdResult<Value> {
@@ -403,7 +510,7 @@ pub async fn get_audience(state: State<'_, AppState>, kind: String, cursor: Opti
 /// Open a help link in the system browser. Only known hosts are allowed.
 #[tauri::command]
 pub fn open_external(app: AppHandle, url: String) -> CmdResult<()> {
-    const ALLOWED: &[&str] = &["streamelements.com", "dev.twitch.tv", "www.twitch.tv", "twitch.tv"];
+    const ALLOWED: &[&str] = &["streamelements.com", "dev.twitch.tv", "www.twitch.tv", "twitch.tv", "sylva-edge.haruxe.workers.dev"];
     let parsed = url::Url::parse(&url).map_err(|_| "invalid link".to_string())?;
     let host = parsed.host_str().unwrap_or_default();
     let ok = parsed.scheme() == "https"

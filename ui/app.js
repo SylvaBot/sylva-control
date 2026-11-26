@@ -165,7 +165,7 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- auth ----------
 
-let auth = { streamelements: null, twitch: null, defaultTwitchClientId: null };
+let auth = { streamelements: null, twitch: null, sylva: null, defaultTwitchClientId: null };
 
 function applyAuth(a) {
   auth = a;
@@ -181,6 +181,17 @@ function applyAuth(a) {
   $("tw-signout").hidden = !a.twitch;
   $("tw-connect-menu").hidden = !!a.twitch;
   $("se-signout").hidden = !se;
+  const sy = a.sylva;
+  $("menu-sy-name").textContent = sy ? sy.name || sy.login || "Connected" : "Not connected";
+  $("sy-signout").hidden = !sy;
+  $("sy-connect").hidden = !!sy;
+  // The feed comes from Sylva when it is connected: start it over when that changes.
+  const source = sy ? "sylva:" + sy.key : "se";
+  if (feedSource !== null && feedSource !== source) {
+    feed = [];
+    renderFeed();
+  }
+  feedSource = source;
   loadChannelInfo();
   refreshAds();
 }
@@ -231,6 +242,32 @@ $("tw-signout").addEventListener("click", async () => {
   }
 });
 
+// ---------- Sylva connection ----------
+// Sylva is where alerts, overlays and the bot live. Connected, Cortex shows
+// Sylva's activity, the same feed every Sylva page shows.
+
+$("sy-connect").addEventListener("click", async () => {
+  const btn = $("sy-connect");
+  btn.disabled = true;
+  try {
+    const code = await invoke("sylva_sign_in");
+    toast("Approve Cortex in your browser. Code " + code.user_code);
+  } catch (x) {
+    toast("Could not start Sylva sign-in: " + x, true);
+    btn.disabled = false;
+  }
+});
+
+$("sy-signout").addEventListener("click", async () => {
+  closeMenus();
+  try {
+    applyAuth(await invoke("sylva_sign_out"));
+    await loadFeed();
+  } catch (x) {
+    toast(String(x), true);
+  }
+});
+
 document.addEventListener("click", (e) => {
   const a = e.target.closest("a[data-ext]");
   if (!a) return;
@@ -264,6 +301,9 @@ const MAX_ITEMS = 500;
 const DAY = 86400000;
 
 let feed = [];
+let feedSource = null;
+// Test events leave the feed 30 seconds after they came in, as on Sylva.
+const TEST_TTL = 30000;
 // Groups the user picked. Empty means everything.
 let shown = new Set((store("shownGroups") || []).filter((g) => GROUPS.some((x) => x.id === g)));
 
@@ -363,7 +403,8 @@ function describe(a) {
       if (has && n > 1) pills.push(num(n) + " months");
       break;
     case "giftedSub":
-      b(a.sender || "Anonymous"); t(" gifted a sub to "); b(name);
+      if (a.sender) { b(a.sender); t(" gifted a sub to "); b(name); }
+      else { b(name); t(" got a gifted sub"); }
       if (tier) pills.push(tier);
       // StreamElements fills in an automatic "X gifted a sub to Y" message; the sentence already says it.
       if (/gift/i.test(message || "")) message = null;
@@ -388,9 +429,101 @@ function describe(a) {
     case "host":
       b(name); t(has ? " hosted with " + num(n) + " " + plural("viewer", "viewers") : " hosted");
       break;
-    default:
-      b(name);
-      if (a.rawType) pills.push(a.rawType);
+    default: {
+      const w = otherWords(a);
+      parts.push(...w.parts);
+      pills.push(...w.pills);
+      if (w.message !== undefined) message = w.message;
+    }
+  }
+  if (a.test) pills.push("Test");
+  return { parts, pills, message };
+}
+
+// Words for Twitch events that are not follows, subs and the like, from the
+// payload Sylva passes along. The same sentences Sylva's own lists use.
+function otherWords(a) {
+  const raw = a.raw || {};
+  const str = (k) => (typeof raw[k] === "string" && raw[k] ? raw[k] : null);
+  const int = (k) => (typeof raw[k] === "number" && isFinite(raw[k]) ? raw[k] : null);
+  const parts = [];
+  const pills = [];
+  let message;
+  const b = (t) => parts.push(el("b", null, t));
+  const t = (s) => parts.push(document.createTextNode(s));
+  const type = a.rawType || "";
+  const ends = (x) => type.endsWith(x);
+  const winner = (list, id) => {
+    if (!Array.isArray(list)) return null;
+    if (id) { const o = list.find((x) => x && x.id === id); return o && o.title ? o.title : null; }
+    const score = (o) => Number(o.votes ?? o.channel_points ?? 0) || 0;
+    const best = list.reduce((m, o) => (o && (!m || score(o) > score(m)) ? o : m), null);
+    return best && score(best) > 0 ? best.title || null : null;
+  };
+  const secs = (n) => {
+    if (n < 60) return n + " seconds";
+    const m = Math.floor(n / 60), r = n % 60;
+    return r ? m + ":" + String(r).padStart(2, "0") : m + (m === 1 ? " minute" : " minutes");
+  };
+  switch (type) {
+    case "stream.online": b("You"); t(" went live"); break;
+    case "stream.offline": b("Stream"); t(" ended"); break;
+    case "channel.update":
+      b("Stream info"); t(" changed");
+      message = [str("title"), str("category_name")].filter(Boolean).join(" · ") || null;
+      break;
+    case "channel.raid":
+      b("You"); t(" raided "); b(str("to_broadcaster_user_name") || "a channel");
+      if (a.amount) pills.push(num(a.amount) + (a.amount === 1 ? " viewer" : " viewers"));
+      break;
+    case "channel.ad_break.begin":
+      b("Ad break"); t(" started");
+      if (int("duration_seconds")) pills.push(secs(int("duration_seconds")));
+      if (raw.is_automatic === true) pills.push("Automatic");
+      else if (str("requester_user_name")) pills.push("Started by " + str("requester_user_name"));
+      break;
+    case "channel.hype_train.begin":
+    case "channel.hype_train.progress":
+    case "channel.hype_train.end":
+      b("Hype train"); t(ends("begin") ? " started" : ends("end") ? " ended" : " is going");
+      if (int("level")) pills.push("Level " + num(int("level")));
+      if (int("total")) pills.push(num(int("total")) + " points");
+      break;
+    case "channel.prediction.begin":
+    case "channel.prediction.lock":
+    case "channel.prediction.end":
+      b("Prediction"); t(ends("begin") ? " started" : ends("lock") ? " locked" : " ended");
+      message = str("title");
+      if (ends("end")) {
+        const won = winner(raw.outcomes, str("winning_outcome_id"));
+        pills.push(won ? "Won: " + won : "Canceled");
+      }
+      break;
+    case "channel.poll.begin":
+    case "channel.poll.end": {
+      b("Poll"); t(ends("begin") ? " started" : " ended");
+      message = str("title");
+      const top = ends("end") ? winner(raw.choices) : null;
+      if (top) pills.push("Top: " + top);
+      break;
+    }
+    case "channel.charity_campaign.donate": {
+      b(str("user_name") || a.displayName || "Someone");
+      const charity = str("charity_name");
+      if (charity) { t(" donated to "); b(charity); } else t(" donated to charity");
+      const amt = raw.amount;
+      if (amt && typeof amt.value === "number") {
+        const v = amt.value / Math.pow(10, amt.decimal_places || 0);
+        pills.push(money(v, amt.currency || "USD"));
+      }
+      break;
+    }
+    default: {
+      const words = type.replace(/^channel\./, "").replace(/[._]+/g, " ").trim();
+      const human = words ? words[0].toUpperCase() + words.slice(1) : "Event";
+      if (a.displayName || a.username) { b(a.displayName || a.username); t(" " + human.toLowerCase()); }
+      else b(human);
+    }
   }
   return { parts, pills, message };
 }
@@ -440,7 +573,9 @@ function renderItem(a, fresh) {
     }
   });
 
-  li.append(tile, main, side, replay);
+  // Stream changes, polls and the like have no alert to replay.
+  if (kind === "other") li.append(tile, main, side);
+  else li.append(tile, main, side, replay);
   return li;
 }
 
@@ -459,8 +594,22 @@ function renderFeed() {
   renderSummary();
 }
 
+/** Take a test event out of the feed once its 30 seconds are up. */
+function expireTest(a, live) {
+  if (a.expires) return;
+  const left = live || !a.receivedAt ? TEST_TTL : Math.min(TEST_TTL, Math.max(0, a.receivedAt + TEST_TTL - Date.now()));
+  a.expires = setTimeout(() => {
+    feed = feed.filter((x) => x !== a);
+    const li = [...$("feed").children].find((x) => x.dataset.id === a.id);
+    if (li) li.remove();
+    $("feed-empty").hidden = feed.some(visible);
+    renderSummary();
+  }, left);
+}
+
 function addLive(a) {
   if (feed.some((x) => x.id === a.id)) return;
+  if (a.test) expireTest(a, true);
   feed.unshift(a);
   if (feed.length > MAX_ITEMS) feed.length = MAX_ITEMS;
   if (visible(a)) {
@@ -473,7 +622,7 @@ function addLive(a) {
 }
 
 async function loadFeed() {
-  if (!auth.streamelements) return;
+  if (!auth.streamelements && !auth.sylva) return;
   const btn = $("feed-refresh");
   btn.classList.add("spin");
   try {
@@ -481,6 +630,7 @@ async function loadFeed() {
     const known = new Set(history.map((a) => a.id));
     // Keep live items that arrived while history was loading.
     feed = feed.filter((a) => !known.has(a.id)).concat(history).slice(0, MAX_ITEMS);
+    for (const a of feed) if (a.test) expireTest(a, false);
     renderFeed();
   } catch (x) {
     toast("Could not load activity: " + x, true);
@@ -1117,6 +1267,19 @@ async function start() {
     refreshStatsSoon();
   });
   await listen("realtime-status", (e) => setRealtime(e.payload));
+  await listen("sylva-status", (e) => {
+    if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Cortex. Connect Sylva again in Settings.", true);
+  });
+  await listen("sylva-auth", async (e) => {
+    $("sy-connect").disabled = false;
+    if (e.payload.ok) {
+      toast("Sylva connected" + (e.payload.name ? " as " + e.payload.name : "") + ". Activity now comes from Sylva.");
+      applyAuth(await invoke("restore_session"));
+      await loadFeed();
+    } else {
+      toast("Sylva sign-in failed: " + e.payload.error, true);
+    }
+  });
   await listen("update-status", (e) => showUpdateStatus(e.payload));
   await listen("twitch-auth", async (e) => {
     $("tw-code").hidden = true;

@@ -43,6 +43,15 @@ pub struct Activity {
     pub gifted: bool,
     pub sender: Option<String>,
     pub redemption: Option<String>,
+    /// The platform's own payload, for events Cortex words from its fields
+    /// (ad breaks, polls, predictions). Only Sylva sends it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw: Option<Value>,
+    /// A test event from a "Try it" button. It leaves the feed after 30 seconds.
+    pub test: bool,
+    /// When the server got it, in Unix milliseconds. Only Sylva sends it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub received_at: Option<i64>,
 }
 
 fn s(v: &Value, key: &str) -> Option<String> {
@@ -105,6 +114,9 @@ impl Activity {
             gifted,
             sender,
             redemption: s(data, "redemption"),
+            raw: None,
+            test: false,
+            received_at: None,
         })
     }
 }
