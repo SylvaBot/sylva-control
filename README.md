@@ -77,7 +77,7 @@ If you run Cortex from a git clone, it checks for new changes when it starts and
 minutes after that. When some are ready, a notice appears and an **Update** button shows in
 the top bar. Click it and Cortex downloads the changes and rebuilds itself, showing its progress,
 then restarts. No console window is involved. You can also use **Check for updates** in the
-account menu.
+Settings menu.
 
 `update-and-run.bat` does the same from a console window, which is handy for the first build.
 After that you can open `target\debug\pine.exe` directly, or pin it to the taskbar. (The
@@ -93,11 +93,11 @@ Linux). Treat it like a password.
 **Twitch (optional, needed to change your title and category).** Cortex shows your viewer count
 without it: it looks up your channel name from StreamElements on [DecAPI](https://decapi.me), a
 free public service. StreamElements has no public way to change the title or category, so
-that part goes through Twitch. Connect it from the account menu or the Stream info section:
+that part goes through Twitch. Connect it from the Settings menu or the Stream info section:
 
 1. Go to https://dev.twitch.tv/console/apps and register an application.
 2. Set **Client Type** to **Public**. Any OAuth Redirect URL works, for example `http://localhost`.
-3. Click **Connect Twitch** in the account menu, paste the **Client ID** and continue.
+3. Click **Connect Twitch** in the Settings menu, paste the **Client ID** and continue.
 4. Enter the code Cortex shows on the Twitch page that opens, and approve.
 
 To skip step 3 for everyone who uses your build, set `CORTEX_TWITCH_CLIENT_ID` when building (the older

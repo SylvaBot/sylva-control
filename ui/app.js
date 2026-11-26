@@ -90,9 +90,10 @@ function avatar(name, url) {
 
 // ---------- menus ----------
 
-const MENUS = [["account-btn", "account-menu"]];
+const MENUS = [["filter-btn", "filters"]];
 
 function closeMenus(except) {
+  if (except !== "settings") $("settings").hidden = true;
   for (const [b, m] of MENUS) {
     if (m === except) continue;
     $(m).hidden = true;
@@ -111,35 +112,56 @@ for (const [b, m] of MENUS) {
   $(m).addEventListener("click", (e) => e.stopPropagation());
 }
 document.addEventListener("click", () => closeMenus());
+
+// ---------- settings ----------
+
+$("account-btn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = $("settings").hidden;
+  closeMenus("settings");
+  $("settings").hidden = !open;
+});
+$("settings").querySelector(".dialog").addEventListener("click", (e) => e.stopPropagation());
+$("settings-close").addEventListener("click", () => closeMenus());
+
+// Dashboard preferences, saved on this computer. Each one shows or hides a part of the page.
+const PREF_DEFAULTS = { adbar: true, actions: true, info: true, compact: false, glow: true };
+const prefs = { ...PREF_DEFAULTS, ...(store("prefs") || {}) };
+
+function applyPrefs() {
+  const b = document.body.classList;
+  b.toggle("no-adbar", !prefs.adbar);
+  b.toggle("no-actions", !prefs.actions);
+  b.toggle("no-info", !prefs.info);
+  b.toggle("compact", prefs.compact);
+  b.toggle("no-glow", !prefs.glow);
+}
+
+for (const box of document.querySelectorAll("#prefs input[data-pref]")) {
+  box.checked = !!prefs[box.dataset.pref];
+  box.addEventListener("change", () => {
+    prefs[box.dataset.pref] = box.checked;
+    store("prefs", prefs);
+    applyPrefs();
+  });
+}
+applyPrefs();
+
+if (window.__TAURI__.app) {
+  window.__TAURI__.app.getVersion().then((v) => { $("app-version").textContent = v; }).catch(() => {});
+}
+
+// ---------- window buttons (the system title bar is hidden) ----------
+
+const appWindow = window.__TAURI__.window.getCurrentWindow();
+$("win-min").addEventListener("click", () => appWindow.minimize().catch(console.warn));
+$("win-max").addEventListener("click", () => appWindow.toggleMaximize().catch(console.warn));
+$("win-close").addEventListener("click", () => appWindow.close().catch(console.warn));
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   closeMenus();
   if (!$("twitch-dialog").hidden) closeTwitchDialog();
 });
-
-// ---------- side rail ----------
-
-const railBtns = [...document.querySelectorAll(".rail-btn[data-section]")];
-
-function markRail() {
-  const content = $("content");
-  const top = content.getBoundingClientRect().top + 80;
-  let current = railBtns[0];
-  // At the very bottom the last section may be too short to reach the top.
-  const atEnd = content.scrollTop + content.clientHeight >= content.scrollHeight - 4;
-  for (const b of railBtns) {
-    if ($(b.dataset.section).getBoundingClientRect().top <= top) current = b;
-  }
-  if (atEnd && content.scrollTop > 0) current = railBtns[railBtns.length - 1];
-  for (const b of railBtns) b.classList.toggle("active", b === current);
-}
-
-for (const b of railBtns) {
-  b.addEventListener("click", () => {
-    $(b.dataset.section).scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-$("content").addEventListener("scroll", markRail, { passive: true });
 
 // ---------- auth ----------
 
@@ -281,31 +303,37 @@ function renderSummary() {
   }
   $("mix-label").textContent = total === 1 ? "1 event in the last 24 hours" : num(total) + " events in the last 24 hours";
 
-  const all = el("button", "filter");
-  all.type = "button";
-  all.setAttribute("aria-pressed", String(shown.size === 0));
-  all.append(document.createTextNode("All"), el("span", "count", num(total)));
-  all.addEventListener("click", () => {
-    shown.clear();
-    store("shownGroups", []);
-    renderFeed();
-  });
-  const buttons = [all];
+  // The Filter menu: one row per kind, with its count. Nothing picked means everything.
+  const row = (label, cls, count, on, onClick) => {
+    const b = el("button", "filter-row" + (cls ? " " + cls : ""));
+    b.type = "button";
+    b.setAttribute("role", "menuitemcheckbox");
+    b.setAttribute("aria-checked", String(on));
+    const check = el("span", "check");
+    check.appendChild(icon("i-check"));
+    b.append(check, el("span", "bar"), el("span", "filter-name", label), el("span", "count", num(count)));
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  const buttons = [
+    row("Everything", "all", total, shown.size === 0, () => {
+      shown.clear();
+      store("shownGroups", []);
+      renderFeed();
+    }),
+    el("div", "menu-sep"),
+  ];
   for (const g of GROUPS) {
     if (g.id === "other" && counts.other === 0 && !shown.has("other")) continue;
-    const b = el("button", "filter " + g.color);
-    b.type = "button";
-    b.title = "Show " + g.label.toLowerCase() + " (click more than one to combine)";
-    b.setAttribute("aria-pressed", String(shown.has(g.id)));
-    b.append(el("span", "bar"), document.createTextNode(g.label), el("span", "count", num(counts[g.id])));
-    b.addEventListener("click", () => {
+    buttons.push(row(g.label, g.color, counts[g.id], shown.has(g.id), () => {
       if (shown.has(g.id)) shown.delete(g.id);
       else shown.add(g.id);
       store("shownGroups", [...shown]);
       renderFeed();
-    });
-    buttons.push(b);
+    }));
   }
+  $("filter-label").textContent = shown.size ? "Filter (" + shown.size + ")" : "Filter";
+  $("filter-btn").classList.toggle("on", shown.size > 0);
   $("filters").replaceChildren(...buttons);
 }
 
@@ -471,18 +499,17 @@ setInterval(() => {
 // ---------- numbers ----------
 
 function resetStats() {
-  for (const id of ["stat-viewers", "stat-followers", "stat-subs", "stat-followers-session", "stat-subs-session"]) {
-    $(id).textContent = "-";
-    $(id).classList.remove("up");
-  }
+  for (const id of ["stat-viewers", "stat-followers", "stat-subs"]) $(id).textContent = "-";
+  setLive(null);
   setViewerNote(null);
 }
 
-function setSession(id, n) {
-  const e = $(id);
-  e.textContent = n === null || n === undefined ? "-" : "+" + num(n);
-  e.classList.toggle("up", !!n);
-  e.title = "New since the stream started";
+/** The Live / Offline pill above the viewer count. `null` means not known. */
+function setLive(live) {
+  const pill = $("live-pill");
+  pill.dataset.state = live === null ? "unknown" : live ? "live" : "offline";
+  $("live-text").textContent = live === null ? "Not available" : live ? "Live" : "Offline";
+  $("viewers-label").hidden = !live;
 }
 
 let statsTimer = null;
@@ -494,8 +521,6 @@ async function refreshStats() {
     const s = await invoke("get_stats");
     $("stat-followers").textContent = num(s.followers);
     $("stat-subs").textContent = num(s.subscribers);
-    setSession("stat-followers-session", s.followersSession);
-    setSession("stat-subs-session", s.subscribersSession);
   } catch (x) {
     console.warn(x);
   }
@@ -532,14 +557,18 @@ async function refreshViewers() {
     if (v.source === "none") {
       n.textContent = "-";
       n.title = "";
+      setLive(null);
       setViewerNote(auth.streamelements ? "No Twitch channel on this StreamElements account" : null);
       return;
     }
-    n.textContent = v.live ? num(v.viewers) : "0";
+    // Offline shows a dash, not 0, so it never looks like an empty stream.
+    n.textContent = v.live ? num(v.viewers) : "-";
     n.title = "Checked at " + new Date().toLocaleTimeString();
+    setLive(v.live);
     setViewerNote(null);
   } catch (x) {
     $("stat-viewers").textContent = "-";
+    setLive(null);
     setViewerNote("Viewer count unavailable", String(x));
   } finally {
     // Only the latest check schedules the next one, so checks never pile up.
@@ -594,8 +623,36 @@ $("act-reload").addEventListener("click", (e) =>
 
 // What Twitch has now, so Save only sends what changed.
 let channelInfo = null;
-// The category picked from the list: { id, name }.
+// The category picked from the list: { id, name, art }.
 let pickedCategory = null;
+
+/** Box art for a category, sized for the picker. Twitch serves any size from the same link. */
+function boxArt(c) {
+  if (!c || !c.id) return null;
+  const url = c.box_art_url || c.art || "https://static-cdn.jtvnw.net/ttv-boxart/" + encodeURIComponent(c.id) + "-{width}x{height}.jpg";
+  return url.replace("{width}x{height}", "72x96").replace(/-\d+x\d+(\.\w+)$/, "-72x96$1");
+}
+
+function artImg(url) {
+  const img = el("img");
+  img.alt = "";
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.addEventListener("error", () => img.remove());
+  img.src = url;
+  return img;
+}
+
+/** The small box art next to the category field. */
+function showCategoryArt(c) {
+  const box = $("cat-art");
+  const url = boxArt(c);
+  if (box.dataset.url === String(url)) return;
+  box.dataset.url = String(url);
+  box.classList.toggle("has-art", !!url);
+  box.replaceChildren(icon("i-image"));
+  if (url) box.appendChild(artImg(url));
+}
 
 function infoChanged() {
   if (!channelInfo) return false;
@@ -618,6 +675,8 @@ function showChannelInfo(info) {
   pickedCategory = info.game_id ? { id: info.game_id, name: info.game_name } : null;
   $("info-title-input").value = info.title || "";
   $("info-cat-input").value = info.game_name || "";
+  showCategoryArt(pickedCategory);
+  fitTitle();
   updateSaveButton();
 }
 
@@ -653,7 +712,27 @@ setInterval(() => {
 }, INFO_POLL_MS);
 
 $("info-connect-btn").addEventListener("click", openTwitchDialog);
-$("info-title-input").addEventListener("input", updateSaveButton);
+/** The title box grows with the text, so the whole title stays readable. */
+function fitTitle() {
+  const t = $("info-title-input");
+  t.style.height = "auto";
+  t.style.height = t.scrollHeight + 2 + "px";
+}
+
+$("info-title-input").addEventListener("input", () => {
+  const t = $("info-title-input");
+  // Twitch titles are one line, so line breaks (from typing or pasting) become spaces.
+  if (/[\r\n]/.test(t.value)) t.value = t.value.replace(/[\r\n]+/g, " ");
+  fitTitle();
+  updateSaveButton();
+});
+$("info-title-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    $("info-form").requestSubmit();
+  }
+});
+window.addEventListener("resize", fitTitle);
 
 let catTimer = null;
 let catRequest = 0;
@@ -667,8 +746,9 @@ function closeCatList() {
 }
 
 function pickCategory(c) {
-  pickedCategory = { id: c.id, name: c.name };
+  pickedCategory = { id: c.id, name: c.name, art: c.box_art_url };
   $("info-cat-input").value = c.name;
+  showCategoryArt(pickedCategory);
   closeCatList();
   updateSaveButton();
 }
@@ -679,7 +759,12 @@ function renderCatList() {
     list.replaceChildren(el("li", "cat-empty", "No categories found"));
   } else {
     list.replaceChildren(...catResults.map((c, i) => {
-      const li = el("li", "cat-option" + (i === catActive ? " active" : ""), c.name);
+      const li = el("li", "cat-option" + (i === catActive ? " active" : ""));
+      const art = el("span", "cat-art");
+      art.appendChild(icon("i-image"));
+      const url = boxArt(c);
+      if (url) art.appendChild(artImg(url));
+      li.append(art, el("span", "cat-name", c.name));
       li.setAttribute("role", "option");
       li.setAttribute("aria-selected", String(i === catActive));
       li.addEventListener("mousedown", (e) => {
@@ -739,6 +824,7 @@ $("info-cat-input").addEventListener("blur", () => {
   if (!pickedCategory && channelInfo) {
     pickedCategory = channelInfo.game_id ? { id: channelInfo.game_id, name: channelInfo.game_name } : null;
     $("info-cat-input").value = channelInfo.game_name || "";
+    showCategoryArt(pickedCategory);
     updateSaveButton();
   }
 });

@@ -227,7 +227,7 @@ async fn twitch_client_or_err(state: &AppState) -> CmdResult<std::sync::Arc<twit
         .read()
         .await
         .clone()
-        .ok_or_else(|| "Connect Twitch first (account menu, Connect Twitch).".to_string())
+        .ok_or_else(|| "Connect Twitch first (Settings, Connect Twitch).".to_string())
 }
 
 /// Current stream title and category. `None` when Twitch is not connected.
@@ -292,7 +292,7 @@ pub async fn update_channel(
         .await
         .map_err(|e| {
             if e.is_unauthorized() {
-                "Twitch did not allow the change. Disconnect and connect Twitch again from the account menu so Cortex can ask for permission to edit your title and category.".to_string()
+                "Twitch did not allow the change. Disconnect and connect Twitch again in Settings so Cortex can ask for permission to edit your title and category.".to_string()
             } else {
                 e.to_string()
             }
