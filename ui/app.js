@@ -117,6 +117,30 @@ document.addEventListener("keydown", (e) => {
   if (!$("twitch-dialog").hidden) closeTwitchDialog();
 });
 
+// ---------- side rail ----------
+
+const railBtns = [...document.querySelectorAll(".rail-btn[data-section]")];
+
+function markRail() {
+  const content = $("content");
+  const top = content.getBoundingClientRect().top + 80;
+  let current = railBtns[0];
+  // At the very bottom the last section may be too short to reach the top.
+  const atEnd = content.scrollTop + content.clientHeight >= content.scrollHeight - 4;
+  for (const b of railBtns) {
+    if ($(b.dataset.section).getBoundingClientRect().top <= top) current = b;
+  }
+  if (atEnd && content.scrollTop > 0) current = railBtns[railBtns.length - 1];
+  for (const b of railBtns) b.classList.toggle("active", b === current);
+}
+
+for (const b of railBtns) {
+  b.addEventListener("click", () => {
+    $(b.dataset.section).scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+$("content").addEventListener("scroll", markRail, { passive: true });
+
 // ---------- auth ----------
 
 let auth = { streamelements: null, twitch: null, defaultTwitchClientId: null };
