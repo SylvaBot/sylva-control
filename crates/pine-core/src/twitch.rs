@@ -17,8 +17,8 @@ use tokio_util::sync::CancellationToken;
 
 pub const ID_BASE: &str = "https://id.twitch.tv";
 pub const API_BASE: &str = "https://api.twitch.tv/helix";
-pub const SCOPES: &str =
-    "channel:read:subscriptions moderator:read:followers moderator:read:chatters channel:manage:broadcast";
+pub const SCOPES: &str = "channel:read:subscriptions moderator:read:followers moderator:read:chatters \
+     channel:manage:broadcast channel:read:ads";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TwitchTokens {
@@ -363,6 +363,18 @@ impl TwitchClient {
             .await?;
         Ok(())
     }
+
+    /// The channel's ad schedule (Get Ad Schedule, scope `channel:read:ads`). Twitch only
+    /// schedules ads while the channel is live, so offline channels get an empty schedule.
+    pub async fn ad_schedule(&self) -> Result<AdSchedule> {
+        let uid = self.tokens().await.user_id;
+        let v: Value = self.get("/channels/ads", &[("broadcaster_id", uid)]).await?;
+        Ok(v.get("data")
+            .and_then(Value::as_array)
+            .and_then(|a| a.first())
+            .map(AdSchedule::from_helix)
+            .unwrap_or_default())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -380,6 +392,95 @@ pub struct Category {
     pub name: String,
     #[serde(default)]
     pub box_art_url: String,
+}
+
+/// When Twitch will run the next ad break and when the last one started. Times are Unix
+/// seconds; `None` means Twitch has nothing (offline, or no ad yet this stream).
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AdSchedule {
+    pub next_ad_at: Option<i64>,
+    pub last_ad_at: Option<i64>,
+    /// Length of the upcoming ad break, in seconds.
+    pub duration: u64,
+    /// Seconds of pre-roll free time left for new viewers.
+    pub preroll_free_time: u64,
+    pub snooze_count: u64,
+}
+
+impl AdSchedule {
+    /// Twitch documents these fields as strings but sends numbers, and uses 0 or "" for
+    /// "none", so every field is read leniently.
+    fn from_helix(v: &Value) -> Self {
+        let n = |k: &str| match v.get(k) {
+            Some(Value::Number(x)) => x.as_u64().unwrap_or(0),
+            Some(Value::String(x)) => x.trim().parse().unwrap_or(0),
+            _ => 0,
+        };
+        let t = |k: &str| v.get(k).and_then(unix_time).filter(|&x| x > 0);
+        AdSchedule {
+            next_ad_at: t("next_ad_at"),
+            last_ad_at: t("last_ad_at"),
+            duration: n("duration"),
+            preroll_free_time: n("preroll_free_time"),
+            snooze_count: n("snooze_count"),
+        }
+    }
+}
+
+/// A Unix time from a number, a numeric string, or an RFC 3339 string.
+fn unix_time(v: &Value) -> Option<i64> {
+    match v {
+        Value::Number(x) => x.as_i64(),
+        Value::String(s) => {
+            let s = s.trim();
+            if s.is_empty() {
+                None
+            } else if let Ok(x) = s.parse::<i64>() {
+                Some(x)
+            } else {
+                parse_rfc3339(s)
+            }
+        }
+        _ => None,
+    }
+}
+
+/// `2023-08-01T23:08:18Z` or with a `+hh:mm` offset (fractions ignored) to Unix seconds.
+fn parse_rfc3339(s: &str) -> Option<i64> {
+    let b = s.as_bytes();
+    if b.len() < 20 || b[4] != b'-' || b[7] != b'-' || !matches!(b[10], b'T' | b't' | b' ') {
+        return None;
+    }
+    let num = |r: std::ops::Range<usize>| s.get(r)?.parse::<i64>().ok();
+    let (y, mo, d) = (num(0..4)?, num(5..7)?, num(8..10)?);
+    let (h, mi, se) = (num(11..13)?, num(14..16)?, num(17..19)?);
+    let mut rest = &s[19..];
+    if let Some(r) = rest.strip_prefix('.') {
+        rest = r.trim_start_matches(|c: char| c.is_ascii_digit());
+    }
+    let offset = match rest {
+        "Z" | "z" => 0,
+        _ => {
+            let sign = match rest.as_bytes().first()? {
+                b'+' => 1,
+                b'-' => -1,
+                _ => return None,
+            };
+            let oh = rest.get(1..3)?.parse::<i64>().ok()?;
+            let om = rest.get(4..6)?.parse::<i64>().ok()?;
+            sign * (oh * 3600 + om * 60)
+        }
+    };
+    // Days from 1970-01-01 (Howard Hinnant's days_from_civil).
+    let y = if mo <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (mo + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146097 + doe - 719468;
+    Some(days * 86400 + h * 3600 + mi * 60 + se - offset)
 }
 
 #[cfg(test)]
@@ -423,6 +524,34 @@ mod tests {
         assert_eq!(cats[0].name, "Minecraft");
         c.update_channel(Some("New title"), Some("27471")).await.unwrap();
         c.update_channel(None, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn reads_the_ad_schedule() {
+        let base = mock(|head, _| {
+            let first = head.lines().next().unwrap();
+            if first.starts_with("GET /helix/channels/ads?broadcaster_id=42 ") {
+                return (200, r#"{"data":[{"next_ad_at":1700000600,"last_ad_at":"2023-11-14T22:13:20Z","duration":"90","preroll_free_time":120,"snooze_count":3,"snooze_refresh_at":0}]}"#.into());
+            }
+            (404, format!("{{\"unexpected\":\"{first}\"}}"))
+        })
+        .await;
+        let c = TwitchClient::with_bases(tokens(), None, &base, &format!("{base}/helix")).unwrap();
+        let s = c.ad_schedule().await.unwrap();
+        assert_eq!(
+            s,
+            AdSchedule {
+                next_ad_at: Some(1_700_000_600),
+                last_ad_at: Some(1_700_000_000),
+                duration: 90,
+                preroll_free_time: 120,
+                snooze_count: 3,
+            }
+        );
+        let empty = AdSchedule::from_helix(&serde_json::json!({"next_ad_at":0,"last_ad_at":"","duration":0}));
+        assert_eq!(empty, AdSchedule::default());
+        assert_eq!(parse_rfc3339("2023-11-14T23:13:20.5+01:00"), Some(1_700_000_000));
+        assert_eq!(parse_rfc3339("not a time at all here"), None);
     }
 
     #[tokio::test]

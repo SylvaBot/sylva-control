@@ -19,6 +19,7 @@ fn main() {
             commands::get_stats,
             commands::get_viewers,
             commands::get_channel_info,
+            commands::get_ad_schedule,
             commands::search_categories,
             commands::update_channel,
             commands::alert_action,
