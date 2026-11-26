@@ -157,6 +157,16 @@ const appWindow = window.__TAURI__.window.getCurrentWindow();
 $("win-min").addEventListener("click", () => appWindow.minimize().catch(console.warn));
 $("win-max").addEventListener("click", () => appWindow.toggleMaximize().catch(console.warn));
 $("win-close").addEventListener("click", () => appWindow.close().catch(console.warn));
+
+// Drag the window from the title bar. Cortex starts the drag itself (instead of Tauri's
+// built-in drag region) so that a window Windows has snapped keeps its current size when
+// moved, rather than jumping back to the size it had before it was snapped or resized.
+document.querySelector(".titlebar").addEventListener("mousedown", (e) => {
+  if (e.button !== 0 || !e.target.hasAttribute("data-drag-region")) return;
+  e.preventDefault();
+  if (e.detail === 2) appWindow.toggleMaximize().catch(console.warn);
+  else if (e.detail === 1) invoke("start_window_drag").catch(console.warn);
+});
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   closeMenus();
