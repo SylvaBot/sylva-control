@@ -1,4 +1,9 @@
-//! In-app updates for Cortex when it runs from a git checkout.
+//! In-app updates for Cortex.
+//!
+//! Installed copies (from the installers on GitHub Releases) use the Tauri updater: it reads
+//! `latest.json` from the newest release, checks the download against the public key in
+//! tauri.conf.json, installs it and restarts. The rest of this file covers copies that run
+//! from a git checkout.
 //!
 //! The check runs `git fetch` and counts commits on the upstream branch that are not local yet.
 //! Applying an update happens inside Cortex, with no console window: it pulls, rebuilds with
@@ -19,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_updater::UpdaterExt;
 
 /// Where this binary was built from. For a source checkout this is `<repo>/src-tauri`.
 const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
@@ -60,7 +66,7 @@ fn git(root: &Path, args: &[&str]) -> Result<Output, String> {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
-    /// False when Cortex is not running from a git checkout; the UI hides the button.
+    /// False when there is nothing to update from; the UI hides the button.
     supported: bool,
     /// Number of new commits available.
     behind: u32,
@@ -89,17 +95,70 @@ fn check_blocking() -> Result<UpdateInfo, String> {
 }
 
 #[tauri::command]
-pub async fn check_for_update() -> Result<UpdateInfo, String> {
+pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
+    if repo_root().is_none() {
+        return check_release(&app).await;
+    }
     tauri::async_runtime::spawn_blocking(check_blocking)
         .await
         .map_err(|e| e.to_string())?
+}
+
+/// Installed copy: is there a newer release than this one?
+async fn check_release(app: &AppHandle) -> Result<UpdateInfo, String> {
+    let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+    Ok(match update {
+        Some(u) => {
+            let mut changes = vec![format!("Cortex {}", u.version)];
+            if let Some(notes) = u.body.as_deref() {
+                changes.extend(notes.lines().map(str::trim).filter(|l| !l.is_empty()).take(9).map(str::to_string));
+            }
+            UpdateInfo { supported: true, behind: 1, changes }
+        }
+        None => UpdateInfo { supported: true, behind: 0, changes: vec![] },
+    })
+}
+
+/// Installed copy: download the newest release, install it and restart.
+async fn run_release_update(app: &AppHandle) -> Result<(), String> {
+    emit(app, "fetch", "Checking for the new version", 0);
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Cortex is already up to date.")?;
+    let version = update.version.clone();
+    let mut got: u64 = 0;
+    let mut shown: Option<Option<u64>> = None;
+    update
+        .download_and_install(
+            |chunk, total| {
+                got += chunk as u64;
+                let pct = total.filter(|&t| t > 0).map(|t| got * 100 / t);
+                if shown != Some(pct) {
+                    shown = Some(pct);
+                    let text = match pct {
+                        Some(p) => format!("Downloading Cortex {version} ({p}%)"),
+                        None => format!("Downloading Cortex {version}"),
+                    };
+                    emit(app, "fetch", text, 0);
+                }
+            },
+            || emit(app, "restart", "Installing", 0),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// Progress sent to the window while an update runs.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Status {
-    /// "download", "build", "restart" or "error".
+    /// "download", "build", "restart" or "error" (git checkouts); "fetch", "restart" or
+    /// "error" (installed copies).
     step: &'static str,
     text: String,
     /// Number of crates compiled so far during the build step.
@@ -207,6 +266,17 @@ fn run_update(app: &AppHandle) -> Result<(), String> {
 pub fn apply_update(app: AppHandle) -> Result<(), String> {
     if UPDATING.swap(true, Ordering::SeqCst) {
         return Err("An update is already running.".into());
+    }
+    if repo_root().is_none() {
+        tauri::async_runtime::spawn(async move {
+            match run_release_update(&app).await {
+                // On Windows the installer has already closed Cortex and reopens it itself.
+                Ok(()) => app.restart(),
+                Err(e) => emit(&app, "error", e, 0),
+            }
+            UPDATING.store(false, Ordering::SeqCst);
+        });
+        return Ok(());
     }
     std::thread::spawn(move || {
         match run_update(&app) {

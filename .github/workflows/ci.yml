@@ -39,7 +39,8 @@ jobs:
           node-version: 22
       - name: Build the installer
         working-directory: src-tauri
-        run: npx --yes @tauri-apps/cli@2 build
+        # Pull requests have no signing key, so they skip the signed update files.
+        run: npx --yes @tauri-apps/cli@2 build --config tauri.ci.conf.json
       - uses: actions/upload-artifact@v4
         with:
           name: cortex-windows-installer
