@@ -7,6 +7,7 @@ use pine_core::twitch::TwitchTokens;
 const SERVICE: &str = "app.pine.desktop";
 const SE_JWT: &str = "streamelements-jwt";
 const TWITCH: &str = "twitch-tokens";
+const SYLVA: &str = "sylva-token";
 
 fn entry(name: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(SERVICE, name).map_err(|e| format!("credential store unavailable: {e}"))
@@ -56,4 +57,16 @@ pub fn save_twitch(t: &TwitchTokens) -> Result<(), String> {
 
 pub fn clear_twitch() -> Result<(), String> {
     delete(TWITCH)
+}
+
+pub fn load_sylva() -> Result<Option<String>, String> {
+    read(SYLVA)
+}
+
+pub fn save_sylva(token: &str) -> Result<(), String> {
+    write(SYLVA, token)
+}
+
+pub fn clear_sylva() -> Result<(), String> {
+    delete(SYLVA)
 }
