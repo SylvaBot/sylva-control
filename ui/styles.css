@@ -1,12 +1,19 @@
 /*
  * Sylva Desktop's look, the same as Sylva's (2026-11-27): flat near black,
- * SF Pro with Mono tags, solid filled surfaces instead of outlines, and sage
+ * SF Pro (Geist where SF Pro is missing) with Mono tags, solid filled surfaces instead of outlines, and sage
  * as the one accent for the main action and whatever is on or selected.
  * No glass, blur, gradients, colored left borders or dot badges.
  *
  * Radius scale: 8px for small controls and chips, 12px for fields, rows,
  * cards and dialog buttons, 20px for dialogs and top level containers.
  */
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/geist-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 @font-face {
   font-family: "Geist Mono";
   src: url("fonts/geist-mono-wght.woff2") format("woff2");
@@ -55,7 +62,7 @@
   --warn: #e8c36a;
   --scrim: rgba(0, 0, 0, .72);
 
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Geist", system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "SF Mono", ui-monospace, "Geist Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
   --r-control: 8px;
   --r-item: 12px;
