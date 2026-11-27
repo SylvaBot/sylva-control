@@ -4,14 +4,15 @@ Sylva Control is the desktop control room for Sylva: a live activity feed, alert
 and live numbers (viewers, followers, subscribers). Everything except Twitch's own data
 comes from Sylva (https://github.com/SylvaBot/sylva, API in its docs/api.md).
 
-Sylva Control used to be called Cortex, and before that Pine. Some internal names keep an old
+Sylva Control used to be called Sylva Desktop, before that Cortex, and before that Pine. Some internal names keep an old
 name on purpose: the `pine-core` crate, the `pine` Cargo package and the `pine.exe` it builds
 (older copies update themselves with `cargo build -p pine`), the app identifier
 `app.pine.desktop` (it is also the credential store service name and the app data folder, so
-saved sign-ins and settings keep working), the GitHub repository, and the MSI upgrade code
+saved sign-ins and settings keep working; Sylva Chat also reads the Twitch Client ID from it), and the MSI upgrade code
 (still the one Tauri made for "Cortex", so the `.msi` upgrades an old install in place). The
 Windows installer installs into a new "Sylva Control" folder, so its hook
-(`src-tauri/windows/installer-hooks.nsh`) runs the old Cortex uninstaller silently afterwards.
+(`src-tauri/windows/installer-hooks.nsh`) runs the old Sylva Desktop or Cortex uninstaller silently afterwards. The repository is
+SylvaBot/sylva-control (it was haruxee/pine, then haruxee/cortex).
 
 ## Stack and why
 
