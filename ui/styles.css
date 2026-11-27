@@ -119,7 +119,7 @@ svg { width: 16px; height: 16px; flex: none; display: block; }
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand > img { width: 26px; height: 26px; border-radius: 7px; flex: none; }
-.brand-app { font-weight: 750; font-size: 15px; letter-spacing: -0.02em; }
+.brand-app { white-space: nowrap; font-weight: 750; font-size: 15px; letter-spacing: -0.02em; }
 .brand-user { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 12px; margin-left: 2px; border-left: 1px solid var(--border-2); }
 .brand-user:not(:has(.avatar:not(:empty))) { display: none; }
 .brand .avatar { width: 24px; height: 24px; font-size: 11px; }

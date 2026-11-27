@@ -1,4 +1,4 @@
-//! Sylva: the streamer's own platform. Cortex signs in with a device code and
+//! Sylva: the streamer's own platform. Sylva Desktop signs in with a device code and
 //! reads the same activity every Sylva page shows, so the feed is one feed
 //! everywhere. API: docs/api.md in haruxee/sylva.
 
@@ -23,7 +23,7 @@ const MAX_BACKOFF: Duration = Duration::from_secs(10);
 
 pub fn http_client() -> Result<reqwest::Client> {
     Ok(reqwest::Client::builder()
-        .user_agent(concat!("Cortex/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("SylvaDesktop/", env!("CARGO_PKG_VERSION")))
         .timeout(Duration::from_secs(20))
         .build()?)
 }
@@ -42,7 +42,7 @@ pub struct DeviceCode {
 pub async fn start_device_flow(http: &reqwest::Client, base: &str) -> Result<DeviceCode> {
     let resp = http
         .post(format!("{base}/v1/device/code"))
-        .json(&json!({ "clientName": "Cortex" }))
+        .json(&json!({ "clientName": "Sylva Desktop" }))
         .send()
         .await?;
     Ok(check(resp).await?.json().await?)
@@ -237,7 +237,7 @@ pub struct AlertState {
     pub overlays_connected: u64,
 }
 
-/// A Sylva event as Cortex's activity. Chat is left out. The id is the
+/// A Sylva event as Sylva Desktop's activity. Chat is left out. The id is the
 /// event's sequence number, which is what a replay takes.
 pub fn from_sylva(e: &Value) -> Option<Activity> {
     let seq = e.get("seq")?.as_u64()?;

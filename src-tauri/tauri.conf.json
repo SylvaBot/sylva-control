@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cortex",
-  "mainBinaryName": "Cortex",
-  "version": "0.3.3",
+  "productName": "Sylva Desktop",
+  "mainBinaryName": "Sylva Desktop",
+  "version": "0.4.0",
   "identifier": "app.pine.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Cortex",
+        "title": "Sylva Desktop",
         "width": 1180,
         "height": 820,
         "minWidth": 360,
@@ -27,10 +27,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "Cortex",
+    "publisher": "Sylva",
     "category": "Utility",
     "shortDescription": "A desktop control room for streamers.",
-    "longDescription": "Cortex shows your live viewers, alerts and channel activity, and lets you control alerts, overlays and your stream title from one window.",
+    "longDescription": "Sylva Desktop shows your live viewers, alerts and channel activity, and lets you control alerts, overlays and your stream title from one window.",
     "copyright": "Copyright 2026 haruxee",
     "icon": [
       "icons/32x32.png",
@@ -41,7 +41,11 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerHooks": "./windows/installer-hooks.nsh"
+      },
+      "wix": {
+        "upgradeCode": "b572ea82-1e5e-5248-98b6-f1fb8ebb55a2"
       }
     },
     "createUpdaterArtifacts": true

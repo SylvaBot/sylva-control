@@ -1,9 +1,9 @@
-# Cortex
+# Sylva Desktop
 
-<img src="assets/cortex-logo.svg" alt="Cortex logo" width="96" />
+<img src="assets/logo.svg" alt="Sylva Desktop logo" width="96" />
 
-A desktop control room for Sylva streamers, written in Rust. Cortex (Latin for bark)
-is the desktop app in the Sylva family. It used to be called Pine.
+A desktop control room for Sylva streamers, written in Rust. Sylva Desktop is
+the desktop app in the Sylva family. It used to be called Cortex, and before that Pine.
 
 * **Live numbers:** current viewers in large type (no Twitch sign-in needed), with followers
   and subscribers below when Twitch is connected.
@@ -25,18 +25,22 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it is built and why.
 Download the latest installer from the
 [Releases page](https://github.com/haruxee/pine/releases/latest):
 
-* **Windows:** `Cortex_<version>_x64-setup.exe`. Run it; no admin rights needed. Cortex then
+* **Windows:** `Sylva-Desktop_<version>_x64-setup.exe`. Run it; no admin rights needed. Sylva Desktop then
   appears in the Start menu and can be pinned to the taskbar. The installer is not code signed
   yet, so Windows SmartScreen may say it is from an unknown publisher: click **More info**, then
   **Run anyway**. An `.msi` is there too if you prefer it.
 * **macOS:** the `.dmg` (Apple Silicon `aarch64`, Intel `x64`). It is not notarized yet, so the
-  first time, right click Cortex in Applications and choose **Open**.
+  first time, right click Sylva Desktop in Applications and choose **Open**.
 * **Linux:** the `.AppImage`, `.deb` or `.rpm`.
 
-From 0.2.0 on, installed copies update themselves: Cortex checks the latest GitHub Release at
+From 0.2.0 on, installed copies update themselves: Sylva Desktop checks the latest GitHub Release at
 start and every 15 minutes, and an **Update** button appears at the top when there is a new
-version. Click it and Cortex downloads, installs and restarts. On Linux this works for the
+version. Click it and Sylva Desktop downloads, installs and restarts. On Linux this works for the
 AppImage; `.deb` and `.rpm` installs update through a new download. Your sign-ins are kept.
+
+If you had Cortex installed (the old name), it updates to Sylva Desktop the same way. On Windows
+the update installs Sylva Desktop and removes the old Cortex copy and shortcuts, so pin Sylva
+Desktop to the taskbar again if you had Cortex pinned. Sign-ins and settings carry over.
 
 ## Release a new version
 
@@ -73,9 +77,9 @@ anyone holding it could sign an update.
 
 ## Updates
 
-If you run Cortex from a git clone, it checks for new changes when it starts and every 15
+If you run Sylva Desktop from a git clone, it checks for new changes when it starts and every 15
 minutes after that. When some are ready, a notice appears and an **Update** button shows in
-the top bar. Click it and Cortex downloads the changes and rebuilds itself, showing its progress,
+the top bar. Click it and Sylva Desktop downloads the changes and rebuilds itself, showing its progress,
 then restarts. No console window is involved. You can also use **Check for updates** in the
 Settings menu.
 
@@ -85,19 +89,19 @@ program keeps the name `pine.exe` so that copies built before the rename can sti
 
 ## Sign in
 
-**Sylva (required).** Click **Sign in with Sylva** and approve Cortex in the browser page that
+**Sylva (required).** Click **Sign in with Sylva** and approve Sylva Desktop in the browser page that
 opens (the code is filled in). The token is stored in your system's credential store (Windows
-Credential Manager, macOS Keychain, or Secret Service on Linux). You can remove Cortex any time
+Credential Manager, macOS Keychain, or Secret Service on Linux). You can remove Sylva Desktop any time
 under Connected apps in Sylva's settings.
 
-**Twitch (optional, needed for title, category, ad breaks and follower totals).** Cortex shows
+**Twitch (optional, needed for title, category, ad breaks and follower totals).** Sylva Desktop shows
 your viewer count without it: it looks up your channel name on [DecAPI](https://decapi.me), a
 free public service. Connect it from the Settings menu or the Stream info section:
 
 1. Go to https://dev.twitch.tv/console/apps and register an application.
 2. Set **Client Type** to **Public**. Any OAuth Redirect URL works, for example `http://localhost`.
 3. Click **Connect Twitch** in the Settings menu, paste the **Client ID** and continue.
-4. Enter the code Cortex shows on the Twitch page that opens, and approve.
+4. Enter the code Sylva Desktop shows on the Twitch page that opens, and approve.
 
 To skip step 3 for everyone who uses your build, set `CORTEX_TWITCH_CLIENT_ID` when building (the older
 `PINE_TWITCH_CLIENT_ID` still works).
@@ -113,6 +117,6 @@ The UI is static files in `ui/`, embedded at build time. Edit and re-run.
 
 ## Known limits
 
-* The mute and pause buttons read Sylva's state when Cortex opens. A change made elsewhere
+* The mute and pause buttons read Sylva's state when Sylva Desktop opens. A change made elsewhere
   shows after the next restart or button press.
 * History loads the newest 100 items. New events stream in live after that.

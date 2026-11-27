@@ -1,6 +1,6 @@
 name: Release
 
-# Builds the Cortex installers and publishes them as a GitHub Release named after the version
+# Builds the Sylva Desktop installers and publishes them as a GitHub Release named after the version
 # in src-tauri/tauri.conf.json. Run it by pushing a tag like v0.2.0, or by hand from the
 # Actions tab (it then tags the commit it built).
 
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         working-directory: src-tauri
         env:
-          # Signs the update files so installed copies of Cortex accept them (see README).
+          # Signs the update files so installed copies of Sylva Desktop accept them (see README).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: |
@@ -75,11 +75,11 @@ jobs:
         run: |
           arch=$([ "${{ matrix.target }}" = aarch64-apple-darwin ] && echo aarch64 || echo x64)
           cd "${{ matrix.bundle }}/macos"
-          mv Cortex.app.tar.gz "Cortex_${arch}.app.tar.gz"
-          mv Cortex.app.tar.gz.sig "Cortex_${arch}.app.tar.gz.sig"
+          mv "Sylva Desktop.app.tar.gz" "Sylva-Desktop_${arch}.app.tar.gz"
+          mv "Sylva Desktop.app.tar.gz.sig" "Sylva-Desktop_${arch}.app.tar.gz.sig"
       - uses: actions/upload-artifact@v4
         with:
-          name: cortex-${{ matrix.os }}-${{ matrix.target || 'native' }}
+          name: sylva-desktop-${{ matrix.os }}-${{ matrix.target || 'native' }}
           path: |
             ${{ matrix.bundle }}/nsis/*.exe
             ${{ matrix.bundle }}/nsis/*.exe.sig
@@ -114,14 +114,18 @@ jobs:
           mkdir out sigs
           find dist -type f ! -name '*.sig' -exec cp {} out/ \;
           find dist -type f -name '*.sig' -exec cp {} sigs/ \;
+          # GitHub turns spaces in asset names into dots, so use dashes ("Sylva-Desktop_...").
+          for f in out/* sigs/*; do
+            case "$f" in *" "*) mv "$f" "${f// /-}" ;; esac
+          done
           python3 - <<'PY'
           import glob, json, os, datetime
           tag, repo = os.environ["TAG"], os.environ["REPO"]
           base = f"https://github.com/{repo}/releases/download/{tag}/"
           wanted = {
               "windows-x86_64": "*_x64-setup.exe",
-              "darwin-aarch64": "Cortex_aarch64.app.tar.gz",
-              "darwin-x86_64": "Cortex_x64.app.tar.gz",
+              "darwin-aarch64": "Sylva-Desktop_aarch64.app.tar.gz",
+              "darwin-x86_64": "Sylva-Desktop_x64.app.tar.gz",
               "linux-x86_64": "*.AppImage",
           }
           platforms = {}
@@ -134,7 +138,7 @@ jobs:
               platforms[key] = {"signature": sig, "url": base + name}
           latest = {
               "version": tag.lstrip("v"),
-              "notes": f"Cortex {tag.lstrip('v')}",
+              "notes": f"Sylva Desktop {tag.lstrip('v')}",
               "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
               "platforms": platforms,
           }
@@ -145,11 +149,11 @@ jobs:
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Cortex ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
+          name: Sylva Desktop ${{ github.ref_type == 'tag' && github.ref_name || steps.version.outputs.tag }}
           body: |
-            Windows: download `Cortex_*_x64-setup.exe` and run it. It is not code signed yet, so if SmartScreen warns, click More info, then Run anyway.
-            macOS: the `.dmg` (`aarch64` for Apple Silicon, `x64` for Intel). Not notarized yet: the first time, right click Cortex in Applications and choose Open.
+            Windows: download `Sylva-Desktop_*_x64-setup.exe` and run it. It is not code signed yet, so if SmartScreen warns, click More info, then Run anyway.
+            macOS: the `.dmg` (`aarch64` for Apple Silicon, `x64` for Intel). Not notarized yet: the first time, right click Sylva Desktop in Applications and choose Open.
             Linux: the `.AppImage`, `.deb` or `.rpm`.
-            Already have Cortex 0.2.0 or newer installed? It updates itself: click Update at the top when it appears.
+            Already have Cortex (the old name) or Sylva Desktop 0.2.0 or newer installed? It updates itself: click Update at the top when it appears.
           files: out/*
           fail_on_unmatched_files: true
