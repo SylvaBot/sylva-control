@@ -1,9 +1,9 @@
-//! Moving the window from Cortex's own title bar.
+//! Moving the window from Sylva Desktop's own title bar.
 //!
 //! On Windows, a window that has been snapped (dragged to a screen edge, Win+arrow, a snap
 //! layout, or resized until its top or bottom edge touched the screen edge) remembers the size
 //! it had before the snap. Starting a drag then puts that old size back, so the window seems to
-//! jump to a default size. Before each drag Cortex tells Windows that the current size is the
+//! jump to a default size. Before each drag Sylva Desktop tells Windows that the current size is the
 //! window's normal size, so moving it never changes its size. A maximized window is left alone:
 //! dragging it still restores it, like any other app.
 

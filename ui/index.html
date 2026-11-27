@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cortex</title>
+  <title>Sylva Desktop</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -56,7 +56,7 @@
     <header class="titlebar" data-drag-region>
       <div class="brand" data-drag-region>
         <img src="logo.svg" alt="" width="26" height="26" data-drag-region />
-        <span class="brand-app" data-drag-region>Cortex</span>
+        <span class="brand-app" data-drag-region>Sylva Desktop</span>
         <span class="brand-user" data-drag-region>
           <span class="avatar" id="user-avatar"></span>
           <span class="brand-name" id="brand-channel" data-drag-region></span>
@@ -215,10 +215,10 @@
   <div class="overlay welcome" id="signin" hidden>
     <form class="dialog" id="signin-form">
       <img src="logo.svg" alt="" width="40" height="40" />
-      <h1>Sign in to Cortex</h1>
-      <p>Cortex runs on Sylva: your activity, alerts and overlays. Sign in and approve Cortex in the browser that opens.</p>
+      <h1>Sign in to Sylva Desktop</h1>
+      <p>Sylva Desktop runs on Sylva: your activity, alerts and overlays. Sign in and approve Sylva Desktop in the browser that opens.</p>
       <p class="hint" id="signin-code" hidden></p>
-      <p class="hint">Cortex keeps its sign-in in your system's credential store, never in a file.</p>
+      <p class="hint">Sylva Desktop keeps its sign-in in your system's credential store, never in a file.</p>
       <p class="error" id="signin-error" hidden></p>
       <button class="btn primary" type="submit" id="signin-submit">Sign in with Sylva</button>
     </form>
@@ -231,7 +231,7 @@
         <button class="icon-btn" id="twitch-close" title="Close"><svg><use href="#i-x"/></svg></button>
       </div>
       <h1>Connect Twitch</h1>
-      <p>Connecting lets Cortex change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
+      <p>Connecting lets Sylva Desktop change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
         <li>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</li>
         <li>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</li>
@@ -249,10 +249,10 @@
 
   <div class="overlay" id="update-dialog" hidden>
     <div class="dialog" role="status" aria-live="polite">
-      <h1>Updating Cortex</h1>
+      <h1>Updating Sylva Desktop</h1>
       <p id="update-step">Starting</p>
       <div class="progress" id="update-progress"><span></span></div>
-      <p class="hint" id="update-text">Cortex restarts by itself when it is done. You can keep it open.</p>
+      <p class="hint" id="update-text">Sylva Desktop restarts by itself when it is done. You can keep it open.</p>
       <pre class="update-error" id="update-error" hidden></pre>
       <button class="btn" type="button" id="update-close" hidden>Close</button>
     </div>

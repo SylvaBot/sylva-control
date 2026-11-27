@@ -11,15 +11,15 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-rem Keep everything above this line byte for byte: an older Cortex (or Pine) runs this file while
+rem Keep everything above this line byte for byte: an older Sylva Desktop (or Cortex, or Pine) runs this file while
 rem git pull replaces it, and Windows keeps reading from the same position.
-echo Building Cortex. The first build takes a few minutes, later ones are quick...
+echo Building Sylva Desktop. The first build takes a few minutes, later ones are quick...
 cargo build -p pine
 if errorlevel 1 (
   pause
   exit /b 1
 )
-rem After the first build you can open target\debug\pine.exe (Cortex) directly or pin it.
+rem After the first build you can open target\debug\pine.exe (Sylva Desktop) directly or pin it.
 rem The program keeps the name pine.exe so that older copies can still update themselves.
-rem Cortex then updates itself from its Update button, with no console window.
+rem Sylva Desktop then updates itself from its Update button, with no console window.
 start "" "%~dp0target\debug\pine.exe"

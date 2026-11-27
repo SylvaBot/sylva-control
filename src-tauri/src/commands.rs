@@ -21,7 +21,7 @@ const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = match option_env!("CORTEX_TWITCH_
     None => option_env!("PINE_TWITCH_CLIENT_ID"),
 };
 
-const SYLVA_GONE: &str = "Sylva no longer accepts Cortex. Sign in again.";
+const SYLVA_GONE: &str = "Sylva no longer accepts Sylva Desktop. Sign in again.";
 
 fn sylva_err(e: Error) -> String {
     if e.is_unauthorized() {
@@ -89,7 +89,7 @@ async fn open_sylva_session(app: &AppHandle, state: &AppState, client: SylvaClie
 #[tauri::command]
 pub async fn restore_session(app: AppHandle, state: State<'_, AppState>) -> CmdResult<AuthState> {
     let mut notice = None;
-    // Cortex used to sign in to StreamElements. That token is not used any more.
+    // Older versions signed in to StreamElements. That token is not used any more.
     let _ = secrets::clear_se_jwt();
 
     if state.sylva.read().await.is_none() {
@@ -327,7 +327,7 @@ pub async fn update_channel(
         .await
         .map_err(|e| {
             if e.is_unauthorized() {
-                "Twitch did not allow the change. Disconnect and connect Twitch again in Settings so Cortex can ask for permission to edit your title and category.".to_string()
+                "Twitch did not allow the change. Disconnect and connect Twitch again in Settings so Sylva Desktop can ask for permission to edit your title and category.".to_string()
             } else {
                 e.to_string()
             }

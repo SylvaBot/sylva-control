@@ -2,7 +2,7 @@
 name = "pine"
 version.workspace = true
 edition.workspace = true
-description = "Cortex: a desktop control room for StreamElements streamers."
+description = "Sylva Desktop: a desktop control room for Sylva streamers."
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

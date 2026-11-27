@@ -1,13 +1,17 @@
-# Cortex architecture
+# Sylva Desktop architecture
 
-Cortex is the desktop control room for Sylva: a live activity feed, alert quick actions,
+Sylva Desktop is the desktop control room for Sylva: a live activity feed, alert quick actions,
 and live numbers (viewers, followers, subscribers). Everything except Twitch's own data
 comes from Sylva (https://github.com/haruxee/sylva, API in its docs/api.md).
 
-Cortex used to be called Pine. Some internal names keep the old name on purpose: the
-`pine-core` crate, the `pine` Cargo package and the `pine.exe` it builds (older copies update
-themselves with `cargo build -p pine`), the app identifier `app.pine.desktop` (it is also the
-credential store service name, so saved sign-ins keep working), and the GitHub repository.
+Sylva Desktop used to be called Cortex, and before that Pine. Some internal names keep an old
+name on purpose: the `pine-core` crate, the `pine` Cargo package and the `pine.exe` it builds
+(older copies update themselves with `cargo build -p pine`), the app identifier
+`app.pine.desktop` (it is also the credential store service name and the app data folder, so
+saved sign-ins and settings keep working), the GitHub repository, and the MSI upgrade code
+(still the one Tauri made for "Cortex", so the `.msi` upgrades an old install in place). The
+Windows installer installs into a new "Sylva Desktop" folder, so its hook
+(`src-tauri/windows/installer-hooks.nsh`) runs the old Cortex uninstaller silently afterwards.
 
 ## Stack and why
 
@@ -57,7 +61,7 @@ ui/                         index.html, styles.css, app.js
 
 * **Sylva:** device code flow (`POST /v1/device/code`, then poll `/v1/device/token`). The
   approval page opens with the code filled in. The API token is stored in the OS credential
-  store and sent as `Authorization: Bearer`. A 401 means the streamer removed Cortex, so it
+  store and sent as `Authorization: Bearer`. A 401 means the streamer removed Sylva Desktop, so it
   asks to sign in again. A StreamElements token saved by older versions is deleted on start.
 * **Twitch:** device code flow with a Public client, so no client secret ships in the app.
   The user registers a free app at dev.twitch.tv and pastes its Client ID once (or it can be
