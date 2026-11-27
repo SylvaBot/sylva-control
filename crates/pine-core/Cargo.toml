@@ -2,7 +2,7 @@
 name = "pine-core"
 version.workspace = true
 edition.workspace = true
-description = "Sylva and Twitch clients for Sylva Desktop (no GUI code)."
+description = "Sylva and Twitch clients for Sylva Control (no GUI code)."
 
 [dependencies]
 serde.workspace = true

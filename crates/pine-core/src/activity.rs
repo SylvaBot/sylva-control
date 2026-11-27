@@ -38,7 +38,7 @@ pub struct Activity {
     pub gifted: bool,
     pub sender: Option<String>,
     pub redemption: Option<String>,
-    /// The platform's own payload, for events Sylva Desktop words from its fields
+    /// The platform's own payload, for events Sylva Control words from its fields
     /// (ad breaks, polls, predictions). Only Sylva sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<Value>,

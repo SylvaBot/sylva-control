@@ -212,7 +212,7 @@ $("win-min").addEventListener("click", () => appWindow.minimize().catch(console.
 $("win-max").addEventListener("click", () => appWindow.toggleMaximize().catch(console.warn));
 $("win-close").addEventListener("click", () => appWindow.close().catch(console.warn));
 
-// Drag the window from the title bar. Sylva Desktop starts the drag itself (instead of Tauri's
+// Drag the window from the title bar. Sylva Control starts the drag itself (instead of Tauri's
 // built-in drag region) so that a window Windows has snapped keeps its current size when
 // moved, rather than jumping back to the size it had before it was snapped or resized.
 document.querySelector(".titlebar").addEventListener("mousedown", (e) => {
@@ -314,7 +314,7 @@ async function loadHeldTips() {
 setInterval(() => { if (!document.hidden) loadHeldTips(); }, 60000);
 
 // ---------- signing in with Sylva ----------
-// Sylva is where alerts, overlays and the bot live. Sylva Desktop shows Sylva's
+// Sylva is where alerts, overlays and the bot live. Sylva Control shows Sylva's
 // activity, the same feed every Sylva page shows, and controls its alerts.
 
 $("signin-form").addEventListener("submit", async (e) => {
@@ -327,7 +327,7 @@ $("signin-form").addEventListener("submit", async (e) => {
   try {
     const code = await invoke("sylva_sign_in");
     const hint = $("signin-code");
-    hint.textContent = "Approve Sylva Desktop in your browser. Your code is " + code.user_code + ".";
+    hint.textContent = "Approve Sylva Control in your browser. Your code is " + code.user_code + ".";
     hint.hidden = false;
   } catch (x) {
     err.textContent = "Could not start sign-in: " + x;
@@ -1283,7 +1283,7 @@ function renderAd() {
     return;
   }
   if (ads.needsReconnect) {
-    show("", "See ad breaks here", "Reconnect Twitch once so Sylva Desktop can read your ad schedule.", "", 0);
+    show("", "See ad breaks here", "Reconnect Twitch once so Sylva Control can read your ad schedule.", "", 0);
     return;
   }
   const sch = ads.schedule;
@@ -1370,11 +1370,11 @@ async function checkUpdates(manual = false) {
       btn.title = "What's new:\n" + u.changes.map((c) => "- " + c).join("\n");
       // Say so once per new update, even when the check ran on its own.
       if (manual || u.behind !== announcedBehind) {
-        toast("A Sylva Desktop update is ready. Click Update at the top to install it.", false, 10000);
+        toast("A Sylva Control update is ready. Click Update at the top to install it.", false, 10000);
       }
       announcedBehind = u.behind;
     } else if (manual) {
-      toast("Sylva Desktop is up to date");
+      toast("Sylva Control is up to date");
     }
   } catch (x) {
     if (manual) toast(String(x), true);
@@ -1393,7 +1393,7 @@ function showUpdateStatus(s) {
   $("update-error").hidden = !failed;
   $("update-text").hidden = failed;
   if (failed) {
-    $("update-step").textContent = "The update did not finish. Sylva Desktop is still on the version you had.";
+    $("update-step").textContent = "The update did not finish. Sylva Control is still on the version you had.";
     $("update-error").textContent = s.text;
     return;
   }
@@ -1438,7 +1438,7 @@ async function start() {
   });
   await listen("sylva-tips", () => loadHeldTips());
   await listen("sylva-status", (e) => {
-    if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Sylva Desktop. Sign out and sign in again.", true);
+    if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Sylva Control. Sign out and sign in again.", true);
   });
   await listen("sylva-auth", async (e) => {
     const btn = $("signin-submit");

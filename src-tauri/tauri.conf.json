@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Sylva Desktop",
-  "mainBinaryName": "Sylva Desktop",
-  "version": "0.5.1",
+  "productName": "Sylva Control",
+  "mainBinaryName": "Sylva Control",
+  "version": "0.6.0",
   "identifier": "app.pine.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Sylva Desktop",
+        "title": "Sylva Control",
         "width": 1180,
         "height": 820,
         "minWidth": 360,
@@ -30,8 +30,8 @@
     "publisher": "Sylva",
     "category": "Utility",
     "shortDescription": "A desktop control room for streamers.",
-    "longDescription": "Sylva Desktop shows your live viewers, alerts and channel activity, and lets you control alerts, overlays and your stream title from one window.",
-    "copyright": "Copyright 2026 haruxee",
+    "longDescription": "Sylva Control shows your live viewers, alerts and channel activity, and lets you control alerts, overlays and your stream title from one window.",
+    "copyright": "Copyright 2026 Sylva",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -52,9 +52,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU3Q0I4OTgwMkE5QTdCRUIKUldUcmU1b3FnSW5MNTZ1dDI1bnY0NmJTTzhNT1ZyYkIyUGxzREp1aC85YmlsbnBYNDZCaldHV1oK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwMjM3OURFNEE0MUM0MEMKUldRTXhFRkszbmtqZ09MZUdHS3V6VlRHd1Ivamhod0FpVUFUdVdya2FjNlFrUjRncFhtbWpLODUK",
       "endpoints": [
-        "https://github.com/haruxee/cortex/releases/latest/download/latest.json"
+        "https://github.com/SylvaBot/sylva-control/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sylva Desktop</title>
+  <title>Sylva Control</title>
   <link rel="preload" href="fonts/geist-wght.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="fonts/geist-mono-wght.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="styles.css" />
@@ -57,7 +57,7 @@
     <header class="titlebar" data-drag-region>
       <div class="tb-brand" data-drag-region>
         <svg class="leaf" viewBox="17 10 30 42" aria-hidden="true" data-drag-region><path class="leaf-body" d="M32 12c-9 8-13 17-13 25a13 13 0 0 0 26 0c0-8-4-17-13-25z" /><path class="leaf-vein" d="M32 22v30M32 38l-7-6M32 44l7-6" stroke-width="2.6" stroke-linecap="round" fill="none" /></svg>
-        <span data-drag-region>Sylva Desktop</span>
+        <span data-drag-region>Sylva Control</span>
       </div>
       <div class="tb-fill" data-drag-region></div>
       <button class="btn sm primary" id="update-btn" type="button" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
@@ -211,8 +211,8 @@
           <form class="welcome-card" id="signin-form">
             <span class="welcome-logo"><svg class="leaf" viewBox="17 10 30 42" aria-hidden="true"><path class="leaf-body" d="M32 12c-9 8-13 17-13 25a13 13 0 0 0 26 0c0-8-4-17-13-25z" /><path class="leaf-vein" d="M32 22v30M32 38l-7-6M32 44l7-6" stroke-width="2.6" stroke-linecap="round" fill="none" /></svg></span>
             <span class="tag">companion app</span>
-            <h1>Sign in to Sylva Desktop</h1>
-            <p>Your activity, alerts and stream info in one small window next to OBS. Sign in and approve Sylva Desktop in the browser that opens.</p>
+            <h1>Sign in to Sylva Control</h1>
+            <p>Your activity, alerts and stream info in one small window next to OBS. Sign in and approve Sylva Control in the browser that opens.</p>
             <p class="hint" id="signin-code" hidden></p>
             <p class="error" id="signin-error" hidden></p>
             <button class="btn lg primary" type="submit" id="signin-submit">Sign in with Sylva</button>
@@ -256,7 +256,7 @@
                 </div>
               </div>
             </div>
-            <p class="sect-foot">Twitch lets Sylva Desktop change your title and category, read your viewer count straight from Twitch and count down to ad breaks.</p>
+            <p class="sect-foot">Twitch lets Sylva Control change your title and category, read your viewer count straight from Twitch and count down to ad breaks.</p>
           </div>
           <div data-set-pane="display" hidden>
             <div class="grp list" id="prefs">
@@ -272,7 +272,7 @@
                 <div class="gr-ctl"><button class="btn sm" id="check-update" type="button" hidden>Check for updates</button></div>
               </div>
             </div>
-            <p class="sect-foot">Sylva Desktop checks for updates on its own every 15 minutes.</p>
+            <p class="sect-foot">Sylva Control checks for updates on its own every 15 minutes.</p>
           </div>
         </div>
       </div>
@@ -286,7 +286,7 @@
         <button class="icon-btn" type="button" id="twitch-close" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
       </div>
       <h1 id="tw-title">Connect Twitch</h1>
-      <p>Connecting lets Sylva Desktop change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
+      <p>Connecting lets Sylva Control change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
         <li><span class="step-n">1</span><span>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</span></li>
         <li><span class="step-n">2</span><span>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</span></li>
@@ -304,10 +304,10 @@
 
   <div class="modal-back" id="update-dialog" hidden>
     <div class="dialog" role="status" aria-live="polite">
-      <h1>Updating Sylva Desktop</h1>
+      <h1>Updating Sylva Control</h1>
       <p id="update-step">Starting</p>
       <div class="progress" id="update-progress"><span></span></div>
-      <p class="hint" id="update-text">Sylva Desktop restarts by itself when it is done. You can keep it open.</p>
+      <p class="hint" id="update-text">Sylva Control restarts by itself when it is done. You can keep it open.</p>
       <pre class="update-error" id="update-error" hidden></pre>
       <button class="btn" type="button" id="update-close" hidden>Close</button>
     </div>

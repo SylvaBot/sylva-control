@@ -1,4 +1,4 @@
-//! In-app updates for Sylva Desktop.
+//! In-app updates for Sylva Control.
 //!
 //! Installed copies (from the installers on GitHub Releases) use the Tauri updater: it reads
 //! `latest.json` from the newest release, checks the download against the public key in
@@ -6,13 +6,13 @@
 //! from a git checkout.
 //!
 //! The check runs `git fetch` and counts commits on the upstream branch that are not local yet.
-//! Applying an update happens inside Sylva Desktop, with no console window: it pulls, rebuilds with
+//! Applying an update happens inside Sylva Control, with no console window: it pulls, rebuilds with
 //! Cargo, then starts the new build and closes itself. Progress is sent to the window as
 //! `update-status` events.
 //!
 //! Windows does not let a running .exe be overwritten, but it does let it be renamed. So
 //! before building, the running pine.exe is renamed to pine.old.exe; Cargo then writes the
-//! new pine.exe, and the old file is deleted the next time Sylva Desktop starts.
+//! new pine.exe, and the old file is deleted the next time Sylva Control starts.
 //!
 //! The Cargo package and the built program are still named `pine` (the app used to be called
 //! Pine). Copies built before the rename update themselves with `cargo build -p pine` and then
@@ -109,7 +109,7 @@ async fn check_release(app: &AppHandle) -> Result<UpdateInfo, String> {
     let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
     Ok(match update {
         Some(u) => {
-            let mut changes = vec![format!("Sylva Desktop {}", u.version)];
+            let mut changes = vec![format!("Sylva Control {}", u.version)];
             if let Some(notes) = u.body.as_deref() {
                 changes.extend(notes.lines().map(str::trim).filter(|l| !l.is_empty()).take(9).map(str::to_string));
             }
@@ -128,7 +128,7 @@ async fn run_release_update(app: &AppHandle) -> Result<(), String> {
         .check()
         .await
         .map_err(|e| e.to_string())?
-        .ok_or("Sylva Desktop is already up to date.")?;
+        .ok_or("Sylva Control is already up to date.")?;
     let version = update.version.clone();
     let mut got: u64 = 0;
     let mut shown: Option<Option<u64>> = None;
@@ -140,8 +140,8 @@ async fn run_release_update(app: &AppHandle) -> Result<(), String> {
                 if shown != Some(pct) {
                     shown = Some(pct);
                     let text = match pct {
-                        Some(p) => format!("Downloading Sylva Desktop {version} ({p}%)"),
-                        None => format!("Downloading Sylva Desktop {version}"),
+                        Some(p) => format!("Downloading Sylva Control {version} ({p}%)"),
+                        None => format!("Downloading Sylva Control {version}"),
                     };
                     emit(app, "fetch", text, 0);
                 }
@@ -181,7 +181,7 @@ pub fn clean_up_old_build() {
 }
 
 fn run_update(app: &AppHandle) -> Result<(), String> {
-    let root = repo_root().ok_or("Updates only work when Sylva Desktop runs from its git folder.")?;
+    let root = repo_root().ok_or("Updates only work when Sylva Control runs from its git folder.")?;
 
     emit(app, "download", "Downloading the latest changes", 0);
     git(&root, &["pull", "--ff-only"])?;
@@ -257,11 +257,11 @@ fn run_update(app: &AppHandle) -> Result<(), String> {
     quiet(new_exe.to_string_lossy().as_ref())
         .current_dir(&root)
         .spawn()
-        .map_err(|e| format!("the update is installed, but Sylva Desktop could not restart ({e}). Open it again."))?;
+        .map_err(|e| format!("the update is installed, but Sylva Control could not restart ({e}). Open it again."))?;
     Ok(())
 }
 
-/// Pull, rebuild and restart, all inside Sylva Desktop. Progress arrives as `update-status` events.
+/// Pull, rebuild and restart, all inside Sylva Control. Progress arrives as `update-status` events.
 #[tauri::command]
 pub fn apply_update(app: AppHandle) -> Result<(), String> {
     if UPDATING.swap(true, Ordering::SeqCst) {
@@ -270,7 +270,7 @@ pub fn apply_update(app: AppHandle) -> Result<(), String> {
     if repo_root().is_none() {
         tauri::async_runtime::spawn(async move {
             match run_release_update(&app).await {
-                // On Windows the installer has already closed Sylva Desktop and reopens it itself.
+                // On Windows the installer has already closed Sylva Control and reopens it itself.
                 Ok(()) => app.restart(),
                 Err(e) => emit(&app, "error", e, 0),
             }
