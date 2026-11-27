@@ -4,241 +4,295 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sylva Desktop</title>
+  <link rel="preload" href="fonts/geist-mono-wght.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-<!-- Icons from Lucide (lucide.dev), ISC license: see LICENSE-Lucide.txt -->
-<symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></symbol>
-<symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></symbol>
-<symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1" /> <path d="M12 8v13" /> <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" /> <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" /></symbol>
-<symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z" /> <path d="M11 3 8 9l4 13 4-13-3-6" /> <path d="M2 9h20" /></symbol>
-<symbol id="i-tip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /> <path d="M12 18V6" /></symbol>
-<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /> <path d="M20 3v4" /> <path d="M22 5h-4" /> <path d="M4 17v2" /> <path d="M5 18H3" /></symbol>
-<symbol id="i-swords" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" /> <line x1="13" x2="19" y1="19" y2="13" /> <line x1="16" x2="20" y1="16" y2="20" /> <line x1="19" x2="21" y1="21" y2="19" /> <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" /> <line x1="5" x2="9" y1="14" y2="18" /> <line x1="7" x2="4" y1="17" y2="20" /> <line x1="3" x2="5" y1="19" y2="21" /></symbol>
-<symbol id="i-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <circle cx="12" cy="12" r="1" /></symbol>
-<symbol id="i-viewer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5" /> <path d="M20 21a8 8 0 0 0-16 0" /></symbol>
-<symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12" /> <line x1="4" x2="20" y1="6" y2="6" /> <line x1="4" x2="20" y1="18" y2="18" /></symbol>
-<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
-<symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
-<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /> <circle cx="12" cy="12" r="3" /></symbol>
-<symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /> <polyline points="16 17 21 12 16 7" /> <line x1="21" x2="9" y1="12" y2="12" /></symbol>
-<symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
-<symbol id="i-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol>
-<symbol id="i-volx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <line x1="22" x2="16" y1="9" y2="15" /> <line x1="16" x2="22" y1="9" y2="15" /></symbol>
-<symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1" /> <rect x="6" y="4" width="4" height="16" rx="1" /></symbol>
-<symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></symbol>
-<symbol id="i-skip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4" /> <line x1="19" x2="19" y1="5" y2="19" /></symbol>
-<symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /> <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /> <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></symbol>
-<symbol id="i-replay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
-<symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></symbol>
-<symbol id="i-twitch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7" /></symbol>
-<symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 8v8" /> <path d="m8 12 4 4 4-4" /></symbol>
-<symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6" /> <path d="M10 14 21 3" /> <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol>
-<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
-<symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" /> <path d="M5 21h14" /></symbol>
-<symbol id="i-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z" /> <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></symbol>
-<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></symbol>
-<symbol id="i-belloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5" /> <path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7" /> <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /> <path d="m2 2 20 20" /></symbol>
-<symbol id="i-panel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M9 3v18" /></symbol>
-<symbol id="i-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6" /> <path d="M18.09 10.37A6 6 0 1 1 10.34 18" /> <path d="M7 6h1v4" /> <path d="m16.71 13.88.7.71-2.82 2.82" /></symbol>
-<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
-<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
-<symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></symbol>
-<symbol id="i-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="5" y="5" rx="2" /></symbol>
-<symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /> <path d="M7 12h10" /> <path d="M10 18h4" /></symbol>
-<symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
-<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+<!-- Icons from Phosphor Icons (phosphoricons.com), MIT license: see LICENSE-Phosphor.txt -->
+<symbol id="i-heart" viewBox="0 0 256 256" fill="currentColor"><path d="M240,102c0,70-103.79,126.66-108.21,129a8,8,0,0,1-7.58,0C119.79,228.66,16,172,16,102A62.07,62.07,0,0,1,78,40c20.65,0,38.73,8.88,50,23.89C139.27,48.88,157.35,40,178,40A62.07,62.07,0,0,1,240,102Z"/></symbol>
+<symbol id="i-star" viewBox="0 0 256 256" fill="currentColor"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"/></symbol>
+<symbol id="i-gift" viewBox="0 0 256 256" fill="currentColor"><path d="M216,72H180.92c.39-.33.79-.65,1.17-1A29.53,29.53,0,0,0,192,49.57,32.62,32.62,0,0,0,158.44,16,29.53,29.53,0,0,0,137,25.91a54.94,54.94,0,0,0-9,14.48,54.94,54.94,0,0,0-9-14.48A29.53,29.53,0,0,0,97.56,16,32.62,32.62,0,0,0,64,49.57,29.53,29.53,0,0,0,73.91,71c.38.33.78.65,1.17,1H40A16,16,0,0,0,24,88v32a16,16,0,0,0,16,16v64a16,16,0,0,0,16,16h60a4,4,0,0,0,4-4V120H40V88h80v32h16V88h80v32H136v92a4,4,0,0,0,4,4h60a16,16,0,0,0,16-16V136a16,16,0,0,0,16-16V88A16,16,0,0,0,216,72ZM84.51,59a13.69,13.69,0,0,1-4.5-10A16.62,16.62,0,0,1,96.59,32h.49a13.69,13.69,0,0,1,10,4.5c8.39,9.48,11.35,25.2,12.39,34.92C109.71,70.39,94,67.43,84.51,59Zm87,0c-9.49,8.4-25.24,11.36-35,12.4C137.7,60.89,141,45.5,149,36.51a13.69,13.69,0,0,1,10-4.5h.49A16.62,16.62,0,0,1,176,49.08,13.69,13.69,0,0,1,171.49,59Z"/></symbol>
+<symbol id="i-zap" viewBox="0 0 256 256" fill="currentColor"><path d="M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z"/></symbol>
+<symbol id="i-raid" viewBox="0 0 256 256" fill="currentColor"><path d="M64.12,147.8a4,4,0,0,1-4,4.2H16a8,8,0,0,1-7.8-6.17,8.35,8.35,0,0,1,1.62-6.93A67.79,67.79,0,0,1,37,117.51a40,40,0,1,1,66.46-35.8,3.94,3.94,0,0,1-2.27,4.18A64.08,64.08,0,0,0,64,144C64,145.28,64,146.54,64.12,147.8Zm182-8.91A67.76,67.76,0,0,0,219,117.51a40,40,0,1,0-66.46-35.8,3.94,3.94,0,0,0,2.27,4.18A64.08,64.08,0,0,1,192,144c0,1.28,0,2.54-.12,3.8a4,4,0,0,0,4,4.2H240a8,8,0,0,0,7.8-6.17A8.33,8.33,0,0,0,246.17,138.89Zm-89,43.18a48,48,0,1,0-58.37,0A72.13,72.13,0,0,0,65.07,212,8,8,0,0,0,72,224H184a8,8,0,0,0,6.93-12A72.15,72.15,0,0,0,157.19,182.07Z"/></symbol>
+<symbol id="i-tip" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm12,152h-4v8a8,8,0,0,1-16,0v-8H104a8,8,0,0,1,0-16h36a12,12,0,0,0,0-24H116a28,28,0,0,1,0-56h4V72a8,8,0,0,1,16,0v8h16a8,8,0,0,1,0,16H116a12,12,0,0,0,0,24h24a28,28,0,0,1,0,56Z"/></symbol>
+<symbol id="i-gem" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.85,15.85,0,0,1-4.67,11.28l-96.05,96.06a16,16,0,0,1-22.56,0h0l-96-96.06a16,16,0,0,1,0-22.56l96.05-96.06a16,16,0,0,1,22.56,0l96.05,96.06A15.85,15.85,0,0,1,240,128Z"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 256 256" fill="currentColor"><path d="M208,144a15.78,15.78,0,0,1-10.42,14.94L146,178l-19,51.62a15.92,15.92,0,0,1-29.88,0L78,178l-51.62-19a15.92,15.92,0,0,1,0-29.88L78,110l19-51.62a15.92,15.92,0,0,1,29.88,0L146,110l51.62,19A15.78,15.78,0,0,1,208,144ZM152,48h16V64a8,8,0,0,0,16,0V48h16a8,8,0,0,0,0-16H184V16a8,8,0,0,0-16,0V32H152a8,8,0,0,0,0,16Zm88,32h-8V72a8,8,0,0,0-16,0v8h-8a8,8,0,0,0,0,16h8v8a8,8,0,0,0,16,0V96h8a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 256 256" fill="currentColor"><path d="M228,48V96a12,12,0,0,1-12,12H168a12,12,0,0,1,0-24h19l-7.8-7.8a75.55,75.55,0,0,0-53.32-22.26h-.43A75.49,75.49,0,0,0,72.39,75.57,12,12,0,1,1,55.61,58.41a99.38,99.38,0,0,1,69.87-28.47H126A99.42,99.42,0,0,1,196.2,59.23L204,67V48a12,12,0,0,1,24,0ZM183.61,180.43a75.49,75.49,0,0,1-53.09,21.63h-.43A75.55,75.55,0,0,1,76.77,179.8L69,172H88a12,12,0,0,0,0-24H40a12,12,0,0,0-12,12v48a12,12,0,0,0,24,0V189l7.8,7.8A99.42,99.42,0,0,0,130,226.06h.56a99.38,99.38,0,0,0,69.87-28.47,12,12,0,0,0-16.78-17.16Z"/></symbol>
+<symbol id="i-image" viewBox="0 0 256 256" fill="currentColor"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM156,88a12,12,0,1,1-12,12A12,12,0,0,1,156,88Zm60,112H40V160.69l46.34-46.35a8,8,0,0,1,11.32,0h0L165,181.66a8,8,0,0,0,11.32-11.32l-17.66-17.65L173,138.34a8,8,0,0,1,11.31,0L216,170.07V200Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 256 256" fill="currentColor"><path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z"/></symbol>
+<symbol id="i-logout" viewBox="0 0 256 256" fill="currentColor"><path d="M124,216a12,12,0,0,1-12,12H48a12,12,0,0,1-12-12V40A12,12,0,0,1,48,28h64a12,12,0,0,1,0,24H60V204h52A12,12,0,0,1,124,216Zm108.49-96.49-40-40a12,12,0,0,0-17,17L195,116H112a12,12,0,0,0,0,24h83l-19.52,19.51a12,12,0,0,0,17,17l40-40A12,12,0,0,0,232.49,119.51Z"/></symbol>
+<symbol id="i-vol" viewBox="0 0 256 256" fill="currentColor"><path d="M160,32.25V223.69a8.29,8.29,0,0,1-3.91,7.18,8,8,0,0,1-9-.56l-65.57-51A4,4,0,0,1,80,176.16V79.84a4,4,0,0,1,1.55-3.15l65.57-51a8,8,0,0,1,10,.16A8.27,8.27,0,0,1,160,32.25ZM60,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H60a4,4,0,0,0,4-4V84A4,4,0,0,0,60,80Zm126.77,20.84a8,8,0,0,0-.72,11.3,24,24,0,0,1,0,31.72,8,8,0,1,0,12,10.58,40,40,0,0,0,0-52.88A8,8,0,0,0,186.74,100.84Zm40.89-26.17a8,8,0,1,0-11.92,10.66,64,64,0,0,1,0,85.34,8,8,0,1,0,11.92,10.66,80,80,0,0,0,0-106.66Z"/></symbol>
+<symbol id="i-volx" viewBox="0 0 256 256" fill="currentColor"><path d="M213.92,210.62a8,8,0,1,1-11.84,10.76L160,175.09v48.6a8.29,8.29,0,0,1-3.91,7.18,8,8,0,0,1-9-.56l-65.55-51A4,4,0,0,1,80,176.18V87.09L42.08,45.38A8,8,0,1,1,53.92,34.62Zm-27.21-55.46a8,8,0,0,0,11.29-.7,40,40,0,0,0,0-52.88,8,8,0,1,0-12,10.57,24,24,0,0,1,0,31.72A8,8,0,0,0,186.71,155.16Zm40.92-80.49a8,8,0,1,0-11.92,10.66,64,64,0,0,1,0,85.34,8,8,0,1,0,11.92,10.66,80,80,0,0,0,0-106.66ZM153,119.87a4,4,0,0,0,7-2.7V32.25a8.27,8.27,0,0,0-2.88-6.4,8,8,0,0,0-10-.16L103.83,59.33a4,4,0,0,0-.5,5.85ZM60,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H60a4,4,0,0,0,4-4V84A4,4,0,0,0,60,80Z"/></symbol>
+<symbol id="i-pause" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"/></symbol>
+<symbol id="i-play" viewBox="0 0 256 256" fill="currentColor"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"/></symbol>
+<symbol id="i-skip" viewBox="0 0 256 256" fill="currentColor"><path d="M208,40V216a8,8,0,0,1-16,0V146.77L72.43,221.55A15.95,15.95,0,0,1,48,208.12V47.88A15.95,15.95,0,0,1,72.43,34.45L192,109.23V40a8,8,0,0,1,16,0Z"/></symbol>
+<symbol id="i-layers" viewBox="0 0 256 256" fill="currentColor"><path d="M220,169.09l-92,53.65L36,169.09A8,8,0,0,0,28,182.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,169.09Z"/><path d="M220,121.09l-92,53.65L36,121.09A8,8,0,0,0,28,134.91l96,56a8,8,0,0,0,8.06,0l96-56A8,8,0,1,0,220,121.09Z"/><path d="M28,86.91l96,56a8,8,0,0,0,8.06,0l96-56a8,8,0,0,0,0-13.82l-96-56a8,8,0,0,0-8.06,0l-96,56a8,8,0,0,0,0,13.82Z"/></symbol>
+<symbol id="i-replay" viewBox="0 0 256 256" fill="currentColor"><path d="M228,128a100,100,0,0,1-98.66,100H128a99.39,99.39,0,0,1-68.62-27.29,12,12,0,0,1,16.48-17.45,76,76,0,1,0-1.57-109c-.13.13-.25.25-.39.37L54.89,92H72a12,12,0,0,1,0,24H24a12,12,0,0,1-12-12V56a12,12,0,0,1,24,0V76.72L57.48,57.06A100,100,0,0,1,228,128Z"/></symbol>
+<symbol id="i-twitch" viewBox="0 0 256 256" fill="currentColor"><path d="M208,32H48A16,16,0,0,0,32,48V192a16,16,0,0,0,16,16H64v32a8,8,0,0,0,13.12,6.15L122.9,208h42.2a16,16,0,0,0,10.25-3.71l42.89-35.75A15.93,15.93,0,0,0,224,156.25V48A16,16,0,0,0,208,32ZM128,136a8,8,0,0,1-16,0V88a8,8,0,0,1,16,0Zm48,0a8,8,0,0,1-16,0V88a8,8,0,0,1,16,0Z"/></symbol>
+<symbol id="i-external" viewBox="0 0 256 256" fill="currentColor"><path d="M228,104a12,12,0,0,1-24,0V69l-59.51,59.51a12,12,0,0,1-17-17L187,52H152a12,12,0,0,1,0-24h64a12,12,0,0,1,12,12Zm-44,24a12,12,0,0,0-12,12v64H52V84h64a12,12,0,0,0,0-24H48A20,20,0,0,0,28,80V208a20,20,0,0,0,20,20H176a20,20,0,0,0,20-20V140A12,12,0,0,0,184,128Z"/></symbol>
+<symbol id="i-check" viewBox="0 0 256 256" fill="currentColor"><path d="M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm56,112H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="i-download" viewBox="0 0 256 256" fill="currentColor"><path d="M228,144v64a12,12,0,0,1-12,12H40a12,12,0,0,1-12-12V144a12,12,0,0,1,24,0v52H204V144a12,12,0,0,1,24,0Zm-108.49,8.49a12,12,0,0,0,17,0l40-40a12,12,0,0,0-17-17L140,115V32a12,12,0,0,0-24,0v83L96.49,95.51a12,12,0,0,0-17,17Z"/></symbol>
+<symbol id="i-home" viewBox="0 0 256 256" fill="currentColor"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/></symbol>
+<symbol id="i-activity" viewBox="0 0 256 256" fill="currentColor"><path d="M224,128A96,96,0,0,1,62.11,197.82a8,8,0,1,1,11-11.64A80,80,0,1,0,71.43,71.43C67.9,75,64.58,78.51,61.35,82L77.66,98.34A8,8,0,0,1,72,112H32a8,8,0,0,1-8-8V64a8,8,0,0,1,13.66-5.66L50,70.7c3.22-3.49,6.54-7,10.06-10.55A96,96,0,0,1,224,128ZM128,72a8,8,0,0,0-8,8v48a8,8,0,0,0,3.88,6.86l40,24a8,8,0,1,0,8.24-13.72L136,123.47V80A8,8,0,0,0,128,72Z"/></symbol>
+<symbol id="i-settings" viewBox="0 0 256 256" fill="currentColor"><path d="M237.94,107.21a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"/></symbol>
+<symbol id="i-search" viewBox="0 0 256 256" fill="currentColor"><path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/></symbol>
+<symbol id="i-eye" viewBox="0 0 256 256" fill="currentColor"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"/></symbol>
+<symbol id="i-edit" viewBox="0 0 256 256" fill="currentColor"><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM192,108.68,147.31,64l24-24L216,84.68Z"/></symbol>
+<symbol id="i-timer" viewBox="0 0 256 256" fill="currentColor"><path d="M128,40a96,96,0,1,0,96,96A96.11,96.11,0,0,0,128,40Zm45.66,61.66-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM96,16a8,8,0,0,1,8-8h48a8,8,0,0,1,0,16H104A8,8,0,0,1,96,16Z"/></symbol>
+<symbol id="i-warning" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-8,56a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm8,104a12,12,0,1,1,12-12A12,12,0,0,1,128,184Z"/></symbol>
+<symbol id="i-info" viewBox="0 0 256 256" fill="currentColor"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="i-user" viewBox="0 0 256 256" fill="currentColor"><path d="M230.93,220a8,8,0,0,1-6.93,4H32a8,8,0,0,1-6.92-12c15.23-26.33,38.7-45.21,66.09-54.16a72,72,0,1,1,73.66,0c27.39,8.95,50.86,27.83,66.09,54.16A8,8,0,0,1,230.93,220Z"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 256 256" fill="currentColor"><path d="M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 256 256" fill="currentColor"><path d="M232,64V176a24,24,0,0,1-24,24H48a24,24,0,0,1-24-24V64A24,24,0,0,1,48,40H208A24,24,0,0,1,232,64ZM160,216H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="i-minus" viewBox="0 0 256 256" fill="currentColor"><path d="M228,128a12,12,0,0,1-12,12H40a12,12,0,0,1,0-24H216A12,12,0,0,1,228,128Z"/></symbol>
+<symbol id="i-square" viewBox="0 0 256 256" fill="currentColor"><path d="M208,28H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28Zm-4,176H52V52H204Z"/></symbol>
 </defs></svg>
+
   <div class="app">
+    <!-- The system title bar is hidden. This bar moves the window and holds the window buttons. -->
     <header class="titlebar" data-drag-region>
-      <div class="brand" data-drag-region>
-        <img src="logo.svg" alt="" width="26" height="26" data-drag-region />
-        <span class="brand-app" data-drag-region>Sylva Desktop</span>
-        <span class="brand-user" data-drag-region>
-          <span class="avatar" id="user-avatar"></span>
-          <span class="brand-name" id="brand-channel" data-drag-region></span>
-        </span>
+      <div class="tb-brand" data-drag-region>
+        <svg class="leaf" viewBox="17 10 30 42" aria-hidden="true" data-drag-region><path class="leaf-body" d="M32 12c-9 8-13 17-13 25a13 13 0 0 0 26 0c0-8-4-17-13-25z" /><path class="leaf-vein" d="M32 22v30M32 38l-7-6M32 44l7-6" stroke-width="2.6" stroke-linecap="round" fill="none" /></svg>
+        <span data-drag-region>Sylva Desktop</span>
       </div>
-      <div class="titlebar-right">
-        <button class="btn accent" id="update-btn" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
-        <div class="pill-group">
-          <button class="pill-btn" id="account-btn" type="button" title="Settings" aria-label="Settings" aria-haspopup="dialog"><svg><use href="#i-settings"/></svg></button>
-        </div>
-        <div class="pill-group" id="window-controls">
-          <button class="pill-btn" id="win-min" type="button" title="Minimize" aria-label="Minimize"><svg><use href="#i-minus"/></svg></button>
-          <button class="pill-btn" id="win-max" type="button" title="Maximize" aria-label="Maximize"><svg><use href="#i-square"/></svg></button>
-          <button class="pill-btn close" id="win-close" type="button" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
-        </div>
+      <div class="tb-fill" data-drag-region></div>
+      <button class="btn sm primary" id="update-btn" type="button" hidden><svg><use href="#i-download"/></svg><span>Update</span></button>
+      <div class="win" id="window-controls">
+        <button class="win-btn" id="win-min" type="button" title="Minimize" aria-label="Minimize"><svg><use href="#i-minus"/></svg></button>
+        <button class="win-btn" id="win-max" type="button" title="Maximize" aria-label="Maximize"><svg><use href="#i-square"/></svg></button>
+        <button class="win-btn close" id="win-close" type="button" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
       </div>
     </header>
 
-    <main class="main">
-      <div class="content" id="content">
-        <section class="adbar" id="adbar" aria-label="Ad breaks" hidden>
-          <span class="adbar-icon"><svg><use href="#i-megaphone"/></svg></span>
-          <div class="adbar-text">
-            <b id="ad-title" aria-live="polite"></b>
-            <span id="ad-sub"></span>
+    <div class="shell">
+      <nav class="side" aria-label="Sections">
+        <div class="side-nav">
+          <button class="si" type="button" data-page="home" aria-current="page"><svg><use href="#i-home"/></svg><span>Home</span></button>
+          <button class="si" type="button" data-page="activity"><svg><use href="#i-activity"/></svg><span>Activity</span></button>
+          <button class="si" type="button" data-page="stream"><svg><use href="#i-edit"/></svg><span>Stream info</span></button>
+        </div>
+        <div class="side-foot">
+          <div class="side-me">
+            <span class="avatar" id="user-avatar"></span>
+            <span class="side-me-name"><span id="me-name"></span><small id="me-sub"></small></span>
           </div>
-          <span class="adbar-time" id="ad-time"></span>
-          <button class="btn" type="button" id="ad-reconnect" hidden>Reconnect Twitch</button>
-          <div class="adbar-progress" aria-hidden="true"><span id="ad-progress"></span></div>
-        </section>
+          <button class="si" type="button" id="settings-btn" aria-haspopup="dialog"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
+        </div>
+      </nav>
 
-        <section class="block" id="sec-overview" aria-labelledby="ov-title">
-          <h2 class="block-title" id="ov-title"><svg><use href="#i-viewer"/></svg>Your channel</h2>
-          <div class="hero">
-            <div class="hero-top">
-              <span class="live-pill" id="live-pill" data-state="unknown"><span class="live-dot"></span><span id="live-text">Checking</span></span>
-              <div class="hero-num" id="stat-viewers">-</div>
-              <div class="hero-label" id="viewers-label">viewers</div>
-              <p class="hero-note" id="viewer-note" hidden></p>
-            </div>
-            <div class="hero-strip">
-              <div class="cell">
-                <span class="cell-label">Followers</span>
-                <b class="cell-num" id="stat-followers">-</b>
-              </div>
-              <div class="cell">
-                <span class="cell-label">Subscribers</span>
-                <b class="cell-num" id="stat-subs">-</b>
-              </div>
+      <main class="main" id="main">
+        <!-- Home: the channel right now -->
+        <section class="page" id="page-home" aria-labelledby="home-title">
+          <div class="page-head">
+            <div>
+              <span class="tag">/home</span>
+              <h1 id="home-title">Welcome back</h1>
+              <p id="home-desc">Here's your channel right now.</p>
             </div>
           </div>
-        </section>
 
-        <section class="block" id="sec-actions" aria-labelledby="qa-title">
-          <h2 class="block-title" id="qa-title"><svg><use href="#i-zap"/></svg>Quick actions</h2>
-          <div class="qa-grid">
-            <button class="qa-btn" id="act-mute" type="button" aria-pressed="false"><span class="qa-icon"><svg><use href="#i-vol"/></svg></span><span>Mute alerts</span></button>
-            <button class="qa-btn" id="act-pause" type="button" aria-pressed="false"><span class="qa-icon"><svg><use href="#i-pause"/></svg></span><span>Pause alerts</span></button>
-            <button class="qa-btn" id="act-skip" type="button"><span class="qa-icon"><svg><use href="#i-skip"/></svg></span><span>Skip alert</span></button>
-            <button class="qa-btn" id="act-reload" type="button"><span class="qa-icon"><svg><use href="#i-layers"/></svg></span><span>Reload overlays</span></button>
-          </div>
-        </section>
-
-        <section class="block" id="sec-info" aria-labelledby="info-title">
-          <h2 class="block-title" id="info-title"><svg><use href="#i-pencil"/></svg>Stream info</h2>
-          <div class="panel">
-            <div class="info-connect" id="info-connect" hidden>
-              <p>Connect Twitch once to change your title and category from here.</p>
-              <button class="btn" type="button" id="info-connect-btn">Connect Twitch</button>
+          <section class="adbar" id="adbar" aria-label="Ad breaks" hidden>
+            <span class="tile"><svg><use href="#i-timer"/></svg></span>
+            <div class="adbar-text">
+              <b id="ad-title" aria-live="polite"></b>
+              <span id="ad-sub"></span>
             </div>
-            <form class="info-form" id="info-form" autocomplete="off">
-              <label class="field info-title-field"><span class="field-head"><span>Title</span><span class="counter" id="title-count" aria-live="off"></span></span><textarea id="info-title-input" rows="1" maxlength="140" spellcheck="true" placeholder="Stream title"></textarea></label>
-              <div class="info-row">
-                <span class="cat-art" id="cat-art" aria-hidden="true"><svg><use href="#i-image"/></svg></span>
-                <label class="field cat-field"><span>Category</span>
-                  <input id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
-                  <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
-                </label>
-                <button class="btn primary" type="submit" id="info-save" disabled>Save</button>
-              </div>
-            </form>
-          </div>
-        </section>
+            <span class="adbar-time" id="ad-time"></span>
+            <button class="btn sm" type="button" id="ad-reconnect" hidden>Reconnect Twitch</button>
+            <div class="adbar-progress" aria-hidden="true"><span id="ad-progress"></span></div>
+          </section>
 
-        <section class="block" id="sec-tips" aria-labelledby="tips-title" hidden>
-          <h2 class="block-title" id="tips-title"><svg><use href="#i-tip"/></svg>Tips waiting for you</h2>
-          <p class="tips-sub">Paid, not shown yet. Show each one on stream or refund it in full.</p>
-          <ol class="held-tips" id="held-tips"></ol>
-        </section>
+          <section class="sect" id="sec-tips" aria-labelledby="tips-title" hidden>
+            <div class="sect-head"><div><h2 id="tips-title">Tips waiting for you</h2><p>Paid, not shown yet. Show each one on stream or refund it in full.</p></div></div>
+            <ol class="grp list" id="held-tips"></ol>
+          </section>
 
-        <section class="block block-feed" id="sec-activity" aria-labelledby="feed-title">
-          <div class="feed-head">
-            <h2 class="block-title" id="feed-title"><svg><use href="#i-activity"/></svg>Recent activity</h2>
-            <span class="feed-sub" id="mix-label">Last 24 hours</span>
-            <div class="feed-tools">
-              <div class="menu-wrap">
-                <button class="btn filter-btn" id="filter-btn" type="button" aria-haspopup="true" aria-expanded="false"><svg><use href="#i-filter"/></svg><span id="filter-label">Filter</span></button>
-                <div class="menu filter-menu" id="filters" role="group" aria-label="Show these kinds of activity" hidden></div>
-              </div>
-              <button class="icon-btn" id="feed-refresh" title="Reload history"><svg><use href="#i-refresh"/></svg></button>
+          <div class="totals" role="group" aria-label="Your channel">
+            <div class="grp total">
+              <div class="total-label">Viewers</div>
+              <div class="total-num" id="stat-viewers"><span class="skel" style="width:72px;height:26px"></span></div>
+              <div class="total-foot" id="viewer-foot"><span class="skel" style="width:60px;height:11px"></span></div>
+            </div>
+            <div class="grp total">
+              <div class="total-label">Followers</div>
+              <div class="total-num" id="stat-followers"><span class="skel" style="width:96px;height:26px"></span></div>
+              <div class="total-foot">All time</div>
+            </div>
+            <div class="grp total">
+              <div class="total-label">Subscribers</div>
+              <div class="total-num" id="stat-subs"><span class="skel" style="width:72px;height:26px"></span></div>
+              <div class="total-foot">Active now</div>
             </div>
           </div>
-          <div class="feed-card">
-            <div class="mix" id="mix" aria-hidden="true"></div>
-            <ol class="feed" id="feed" aria-live="polite"></ol>
-            <p class="empty" id="feed-empty" hidden></p>
-          </div>
+
+          <section class="sect" id="sec-actions" aria-labelledby="qa-title">
+            <div class="sect-head"><div><h2 id="qa-title">Quick actions</h2></div></div>
+            <div class="qa-grid">
+              <button class="grp qa" id="act-mute" type="button" aria-pressed="false"><span class="tile"><svg><use href="#i-vol"/></svg></span><span class="qa-text"><span class="t1">Mute alerts</span><span class="t2">Alerts play with sound</span></span></button>
+              <button class="grp qa" id="act-pause" type="button" aria-pressed="false"><span class="tile"><svg><use href="#i-pause"/></svg></span><span class="qa-text"><span class="t1">Pause alerts</span><span class="t2">Alerts play as they come</span></span></button>
+              <button class="grp qa" id="act-skip" type="button"><span class="tile"><svg><use href="#i-skip"/></svg></span><span class="qa-text"><span class="t1">Skip alert</span><span class="t2">End the one on screen</span></span></button>
+              <button class="grp qa" id="act-reload" type="button"><span class="tile"><svg><use href="#i-layers"/></svg></span><span class="qa-text"><span class="t1">Reload overlays</span><span class="t2">Refresh every OBS source</span></span></button>
+            </div>
+          </section>
+
+          <section class="sect" aria-labelledby="recent-title">
+            <div class="sect-head">
+              <div><h2 id="recent-title">Recent activity</h2></div>
+              <button class="btn sm ghost" type="button" data-go="activity">See all<svg><use href="#i-chevron"/></svg></button>
+            </div>
+            <div class="grp">
+              <ol class="feed" id="recent" aria-live="polite"></ol>
+              <p class="empty" id="recent-empty" hidden><svg><use href="#i-activity"/></svg><span>No activity yet. Follows, subs, bits and rewards appear here the moment they happen.</span></p>
+            </div>
+          </section>
         </section>
-      </div>
-    </main>
+
+        <!-- Activity: everything, by day -->
+        <section class="page" id="page-activity" aria-labelledby="act-title" hidden>
+          <div class="page-head">
+            <div>
+              <span class="tag">/activity</span>
+              <h1 id="act-title">Activity</h1>
+              <p id="act-desc">Everything that happened on your channel, newest first.</p>
+            </div>
+            <div class="page-actions">
+              <button class="btn" type="button" id="feed-refresh"><svg><use href="#i-refresh"/></svg>Refresh</button>
+            </div>
+          </div>
+          <div class="act-tools">
+            <label class="search act-search"><svg><use href="#i-search"/></svg><span class="sr-only">Search activity</span><input class="input" id="act-search" type="search" placeholder="Search names and messages" autocomplete="off" spellcheck="false" /></label>
+            <div class="act-chips" id="act-chips" role="group" aria-label="Show"></div>
+          </div>
+          <div id="act-days"></div>
+          <p class="empty grp" id="act-empty" hidden><svg><use href="#i-activity"/></svg><span id="act-empty-text"></span></p>
+        </section>
+
+        <!-- Stream info: title and category on Twitch -->
+        <section class="page" id="page-stream" aria-labelledby="stream-title" hidden>
+          <div class="page-head">
+            <div>
+              <span class="tag">/stream</span>
+              <h1 id="stream-title">Stream info</h1>
+              <p>Change your title and category on Twitch without opening the browser.</p>
+            </div>
+          </div>
+
+          <div class="grp link-card" id="info-connect" hidden>
+            <span class="tile"><svg><use href="#i-twitch"/></svg></span>
+            <div class="gr-main"><div class="t1">Connect Twitch</div><div class="t2">Connect once to change your title and category from here.</div></div>
+            <button class="btn primary" type="button" id="info-connect-btn">Connect Twitch</button>
+          </div>
+
+          <form class="grp info-form" id="info-form" autocomplete="off" hidden>
+            <label class="field">
+              <span class="field-head"><span>Title</span><span class="counter" id="title-count"></span></span>
+              <textarea class="input" id="info-title-input" rows="1" maxlength="140" spellcheck="true" placeholder="Stream title"></textarea>
+            </label>
+            <div class="info-row">
+              <span class="cat-art" id="cat-art" aria-hidden="true"><svg><use href="#i-image"/></svg></span>
+              <label class="field cat-field"><span>Category</span>
+                <input class="input" id="info-cat-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cat-list" placeholder="Search categories" />
+                <ul class="cat-list" id="cat-list" role="listbox" hidden></ul>
+              </label>
+            </div>
+            <div class="info-foot">
+              <span class="faint" id="info-state">Saved on Twitch</span>
+              <button class="btn primary" type="submit" id="info-save" disabled>Save</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Signed out: the whole window is the sign-in page -->
+        <section class="welcome" id="signin" hidden>
+          <form class="welcome-card" id="signin-form">
+            <span class="welcome-logo"><svg class="leaf" viewBox="17 10 30 42" aria-hidden="true"><path class="leaf-body" d="M32 12c-9 8-13 17-13 25a13 13 0 0 0 26 0c0-8-4-17-13-25z" /><path class="leaf-vein" d="M32 22v30M32 38l-7-6M32 44l7-6" stroke-width="2.6" stroke-linecap="round" fill="none" /></svg></span>
+            <span class="tag">companion app</span>
+            <h1>Sign in to Sylva Desktop</h1>
+            <p>Your activity, alerts and stream info in one small window next to OBS. Sign in and approve Sylva Desktop in the browser that opens.</p>
+            <p class="hint" id="signin-code" hidden></p>
+            <p class="error" id="signin-error" hidden></p>
+            <button class="btn lg primary" type="submit" id="signin-submit">Sign in with Sylva</button>
+            <p class="hint">Your sign-in stays in your system's credential store, never in a file.</p>
+          </form>
+        </section>
+      </main>
+    </div>
   </div>
 
-  <div class="overlay settings-overlay" id="settings" hidden>
-    <div class="dialog settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="dialog-head">
-        <h1 id="settings-title">Settings</h1>
-        <button class="icon-btn" id="settings-close" title="Close"><svg><use href="#i-x"/></svg></button>
-      </div>
-
-      <div class="set-group">
-        <h2>Accounts</h2>
-        <div class="set-card">
-          <div class="set-row"><span>Twitch</span><b id="menu-tw-name">Not connected</b></div>
-          <div class="set-row"><span>Sylva</span><b id="menu-sy-name">Not connected</b></div>
-          <div class="set-actions">
-            <button class="btn" id="tw-connect-menu" type="button"><svg><use href="#i-twitch"/></svg>Connect Twitch</button>
-            <button class="btn" id="tw-signout" type="button" hidden><svg><use href="#i-logout"/></svg>Disconnect Twitch</button>
-            <button class="btn danger" id="sy-signout" type="button"><svg><use href="#i-logout"/></svg>Sign out</button>
+  <!-- Settings: a window with its own sections, like Sylva's -->
+  <div class="modal-back" id="settings" hidden>
+    <div class="modal settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <aside class="settings-side">
+        <h2 id="settings-title">Settings</h2>
+        <nav>
+          <button class="si" type="button" data-set="accounts" aria-current="page"><svg><use href="#i-user"/></svg><span>Accounts</span></button>
+          <button class="si" type="button" data-set="display"><svg><use href="#i-monitor"/></svg><span>Display</span></button>
+          <button class="si" type="button" data-set="about"><svg><use href="#i-info"/></svg><span>About</span></button>
+        </nav>
+      </aside>
+      <div class="settings-main">
+        <div class="settings-head">
+          <h3 id="set-heading">Accounts</h3>
+          <button class="icon-btn" type="button" id="settings-close" title="Close" aria-label="Close settings"><svg><use href="#i-x"/></svg></button>
+        </div>
+        <div class="settings-body">
+          <div data-set-pane="accounts">
+            <div class="grp list">
+              <div class="gr">
+                <span class="tile"><svg class="leaf" viewBox="17 10 30 42" aria-hidden="true"><path class="leaf-body" d="M32 12c-9 8-13 17-13 25a13 13 0 0 0 26 0c0-8-4-17-13-25z" /><path class="leaf-vein" d="M32 22v30M32 38l-7-6M32 44l7-6" stroke-width="2.6" stroke-linecap="round" fill="none" /></svg></span>
+                <div class="gr-main"><div class="t1">Sylva</div><div class="t2" id="menu-sy-name">Not signed in</div></div>
+                <div class="gr-ctl"><button class="btn sm danger" id="sy-signout" type="button">Sign out</button></div>
+              </div>
+              <div class="gr">
+                <span class="tile"><svg><use href="#i-twitch"/></svg></span>
+                <div class="gr-main"><div class="t1">Twitch</div><div class="t2" id="menu-tw-name">Not connected</div></div>
+                <div class="gr-ctl">
+                  <button class="btn sm" id="tw-connect-menu" type="button">Connect</button>
+                  <button class="btn sm" id="tw-signout" type="button" hidden>Disconnect</button>
+                </div>
+              </div>
+            </div>
+            <p class="sect-foot">Twitch lets Sylva Desktop change your title and category, read your viewer count straight from Twitch and count down to ad breaks.</p>
           </div>
-        </div>
-      </div>
-
-      <div class="set-group">
-        <h2>Dashboard</h2>
-        <div class="set-card" id="prefs">
-          <label class="set-row toggle"><span>Ad break bar<small>Countdown to the next Twitch ad break</small></span><input type="checkbox" data-pref="adbar" /><i></i></label>
-          <label class="set-row toggle"><span>Quick actions</span><input type="checkbox" data-pref="actions" /><i></i></label>
-          <label class="set-row toggle"><span>Stream info</span><input type="checkbox" data-pref="info" /><i></i></label>
-          <label class="set-row toggle"><span>Compact activity<small>Smaller rows so more fit on screen</small></span><input type="checkbox" data-pref="compact" /><i></i></label>
-          <label class="set-row toggle"><span>Warm glow<small>The soft light at the top of the window</small></span><input type="checkbox" data-pref="glow" /><i></i></label>
-        </div>
-      </div>
-
-      <div class="set-group">
-        <h2>About</h2>
-        <div class="set-card">
-          <div class="set-row"><span>Version</span><b id="app-version">-</b></div>
-          <div class="set-actions">
-            <button class="btn" id="check-update" type="button" hidden><svg><use href="#i-refresh"/></svg>Check for updates</button>
+          <div data-set-pane="display" hidden>
+            <div class="grp list" id="prefs">
+              <div class="gr"><div class="gr-main"><div class="t1">Ad break countdown</div><div class="t2">Time left until the next Twitch ad break, on Home</div></div><button class="switch" type="button" role="switch" data-pref="adbar" aria-label="Ad break countdown"></button></div>
+              <div class="gr"><div class="gr-main"><div class="t1">Quick actions</div><div class="t2">Mute, pause and skip alerts from Home</div></div><button class="switch" type="button" role="switch" data-pref="actions" aria-label="Quick actions"></button></div>
+              <div class="gr"><div class="gr-main"><div class="t1">Compact rows</div><div class="t2">Smaller activity rows, so more fit on screen</div></div><button class="switch" type="button" role="switch" data-pref="compact" aria-label="Compact rows"></button></div>
+            </div>
+          </div>
+          <div data-set-pane="about" hidden>
+            <div class="grp list">
+              <div class="gr">
+                <div class="gr-main"><div class="t1">Version</div><div class="t2 mono" id="app-version">-</div></div>
+                <div class="gr-ctl"><button class="btn sm" id="check-update" type="button" hidden>Check for updates</button></div>
+              </div>
+            </div>
+            <p class="sect-foot">Sylva Desktop checks for updates on its own every 15 minutes.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="overlay welcome" id="signin" hidden>
-    <form class="dialog" id="signin-form">
-      <img src="logo.svg" alt="" width="40" height="40" />
-      <h1>Sign in to Sylva Desktop</h1>
-      <p>Sylva Desktop runs on Sylva: your activity, alerts and overlays. Sign in and approve Sylva Desktop in the browser that opens.</p>
-      <p class="hint" id="signin-code" hidden></p>
-      <p class="hint">Sylva Desktop keeps its sign-in in your system's credential store, never in a file.</p>
-      <p class="error" id="signin-error" hidden></p>
-      <button class="btn primary" type="submit" id="signin-submit">Sign in with Sylva</button>
-    </form>
-  </div>
-
-  <div class="overlay" id="twitch-dialog" hidden>
-    <div class="dialog">
+  <div class="modal-back" id="twitch-dialog" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="tw-title">
       <div class="dialog-head">
-        <span class="tile c-viewers"><svg><use href="#i-twitch"/></svg></span>
-        <button class="icon-btn" id="twitch-close" title="Close"><svg><use href="#i-x"/></svg></button>
+        <span class="tile lg"><svg><use href="#i-twitch"/></svg></span>
+        <button class="icon-btn" type="button" id="twitch-close" title="Close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
       </div>
-      <h1>Connect Twitch</h1>
+      <h1 id="tw-title">Connect Twitch</h1>
       <p>Connecting lets Sylva Desktop change your stream title and category, read your viewer count straight from Twitch, and warn you before an ad break. You need a free Twitch app Client ID, once.</p>
       <ol class="steps">
-        <li>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</li>
-        <li>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</li>
-        <li>Paste the Client ID below.</li>
+        <li><span class="step-n">1</span><span>Register an app at <a href="#" data-ext="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a>.</span></li>
+        <li><span class="step-n">2</span><span>Set Client Type to <b>Public</b>. For the redirect URL, use http://localhost.</span></li>
+        <li><span class="step-n">3</span><span>Paste the Client ID below.</span></li>
       </ol>
-      <label class="field"><span>Client ID</span><input id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="e.g. a1b2c3d4..." /></label>
-      <button class="btn primary" id="tw-connect">Continue on Twitch</button>
+      <label class="field"><span>Client ID</span><input class="input mono" id="tw-client-id" autocomplete="off" spellcheck="false" placeholder="a1b2c3d4..." /></label>
+      <button class="btn primary" type="button" id="tw-connect">Continue on Twitch</button>
       <div id="tw-code" class="device-code" hidden>
         <p>Enter this code on the Twitch page that opened:</p>
         <div class="code" id="tw-user-code"></div>
@@ -247,7 +301,7 @@
     </div>
   </div>
 
-  <div class="overlay" id="update-dialog" hidden>
+  <div class="modal-back" id="update-dialog" hidden>
     <div class="dialog" role="status" aria-live="polite">
       <h1>Updating Sylva Desktop</h1>
       <p id="update-step">Starting</p>
