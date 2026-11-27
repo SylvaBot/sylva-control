@@ -361,6 +361,23 @@ pub async fn reload_overlays(state: State<'_, AppState>) -> CmdResult<()> {
     client.alerts(&key, "reload").await.map(|_| ()).map_err(sylva_err)
 }
 
+/// Paid tips waiting for approval in Sylva.
+#[tauri::command]
+pub async fn get_held_tips(state: State<'_, AppState>) -> CmdResult<Vec<serde_json::Value>> {
+    let (client, key) = with_sylva(&state).await?;
+    client.held_tips(&key).await.map_err(sylva_err)
+}
+
+/// Show a held tip on stream (`approve`) or refund it (`reject`).
+#[tauri::command]
+pub async fn decide_tip(state: State<'_, AppState>, id: String, approve: bool) -> CmdResult<()> {
+    let (client, key) = with_sylva(&state).await?;
+    client
+        .tip_action(&key, &id, if approve { "approve" } else { "reject" })
+        .await
+        .map_err(sylva_err)
+}
+
 #[tauri::command]
 pub async fn replay_activity(state: State<'_, AppState>, id: String) -> CmdResult<()> {
     let seq: u64 = id.parse().map_err(|_| "This event cannot be replayed.".to_string())?;

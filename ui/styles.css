@@ -605,3 +605,15 @@ body:has(#signin:not([hidden])) .brand-user { visibility: hidden; }
   /* The ad break line wraps instead of being cut off. */
   .adbar-text span { white-space: normal; }
 }
+
+/* Held tips (Sylva tips waiting for approval) */
+.tips-sub { margin: -4px 0 0; color: var(--muted); font-size: 13px; }
+.held-tips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.held-tip { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--tip) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--tip) 30%, transparent); }
+.held-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.held-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.held-amount { color: var(--tip); font-weight: 600; font-variant-numeric: tabular-nums; }
+.held-msg { margin: 0; color: var(--text); font-size: 13.5px; overflow-wrap: anywhere; }
+.held-why { margin: 0; color: var(--muted); font-size: 12px; }
+.held-actions { display: flex; gap: 6px; flex-shrink: 0; }

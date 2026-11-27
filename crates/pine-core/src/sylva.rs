@@ -181,6 +181,30 @@ impl SylvaClient {
         Ok(check(resp).await?.json().await?)
     }
 
+    /// Paid tips waiting for approval before their alert.
+    pub async fn held_tips(&self, key: &str) -> Result<Vec<Value>> {
+        let resp = self
+            .http
+            .get(format!("{}/v1/channels/{}/tips/held", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        Ok(check(resp).await?.json().await?)
+    }
+
+    /// Send a held tip to the stream (`approve`) or refund it (`reject`).
+    pub async fn tip_action(&self, key: &str, id: &str, action: &str) -> Result<()> {
+        let id: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_').collect();
+        let resp = self
+            .http
+            .post(format!("{}/v1/channels/{}/tips/{id}/{action}", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        check(resp).await?;
+        Ok(())
+    }
+
     /// Play an old event's alert next.
     pub async fn replay(&self, key: &str, seq: u64) -> Result<()> {
         let resp = self
@@ -268,6 +292,8 @@ pub enum LiveStatus {
 pub enum LiveEvent {
     Status(LiveStatus),
     Activity(Box<Activity>),
+    /// How many tips wait for approval changed.
+    Tips(u32),
 }
 
 /// Live activity until `cancel` fires. Reconnects on its own and asks for
@@ -364,6 +390,10 @@ async fn session(
                     Some("ready") => {
                         *backoff = Duration::from_millis(500);
                         let _ = tx.send(LiveEvent::Status(LiveStatus::Live)).await;
+                    }
+                    Some("tips") => {
+                        let held = frame.get("held").and_then(Value::as_u64).unwrap_or(0) as u32;
+                        let _ = tx.send(LiveEvent::Tips(held)).await;
                     }
                     Some("event") => {
                         if let Some(seq) = frame.get("seq").and_then(Value::as_u64) {

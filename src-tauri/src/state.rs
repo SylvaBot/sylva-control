@@ -37,6 +37,7 @@ pub fn start_sylva(app: &AppHandle, client: &SylvaClient, key: &str, last_seq: u
             let sent = match ev {
                 LiveEvent::Activity(a) => app.emit("activity", *a),
                 LiveEvent::Status(s) => app.emit("sylva-status", s),
+                LiveEvent::Tips(held) => app.emit("sylva-tips", held),
             };
             if let Err(e) = sent {
                 log::warn!("could not forward a Sylva event: {e}");

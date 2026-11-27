@@ -200,7 +200,57 @@ function applyAuth(a) {
   loadChannelInfo();
   refreshAds();
   refreshAlertState();
+  loadHeldTips();
 }
+
+// ---------- held tips ----------
+// Big, first-time or risky tips wait in Sylva until someone approves them.
+
+function tipMoney(amount, currency) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
+  } catch (_) {
+    return amount + " " + currency;
+  }
+}
+
+async function loadHeldTips() {
+  if (!auth.sylva) { $("sec-tips").hidden = true; return; }
+  let tips = [];
+  try {
+    tips = await invoke("get_held_tips");
+  } catch (_) {
+    return;
+  }
+  $("sec-tips").hidden = tips.length === 0;
+  $("held-tips").replaceChildren(...tips.map((t) => {
+    const li = el("li", "held-tip");
+    const main = el("div", "held-main");
+    const top = el("div", "held-top");
+    top.append(el("b", "", t.name), el("span", "held-amount", tipMoney(t.amount, t.currency)));
+    main.append(top);
+    if (t.message) main.append(el("p", "held-msg", t.message));
+    const why = [t.holdReason, t.country ? "from " + t.country : null].filter(Boolean).join(", ");
+    if (why) main.append(el("p", "held-why", why.charAt(0).toUpperCase() + why.slice(1)));
+    const show = el("button", "btn primary", "Show it");
+    const refund = el("button", "btn", "Refund");
+    const decide = async (btn, approve) => {
+      show.disabled = refund.disabled = true;
+      const ok = await runAction(btn, () => invoke("decide_tip", { id: t.id, approve }), approve ? "Tip sent to the stream" : "Tip refunded");
+      if (ok) li.remove();
+      else show.disabled = refund.disabled = false;
+      $("sec-tips").hidden = $("held-tips").children.length === 0;
+    };
+    show.addEventListener("click", () => decide(show, true));
+    refund.addEventListener("click", () => decide(refund, false));
+    const side = el("div", "held-actions");
+    side.append(show, refund);
+    li.append(main, side);
+    return li;
+  }));
+}
+// A slow check in case a change was missed while offline.
+setInterval(loadHeldTips, 60000);
 
 // ---------- signing in with Sylva ----------
 // Sylva is where alerts, overlays and the bot live. Cortex shows Sylva's
@@ -1253,6 +1303,7 @@ async function start() {
     addLive(e.payload);
     refreshStatsSoon();
   });
+  await listen("sylva-tips", () => loadHeldTips());
   await listen("sylva-status", (e) => {
     if (e.payload.state === "unauthorized") toast("Sylva no longer accepts Cortex. Sign out and sign in again.", true);
   });
