@@ -37,7 +37,30 @@ function store(key, value) {
 function toast(text, bad = false, ms = bad ? 6500 : 3000) {
   const t = el("div", "toast" + (bad ? " bad" : ""), text);
   $("toasts").appendChild(t);
-  setTimeout(() => t.remove(), ms);
+  setTimeout(() => {
+    t.classList.add("out");
+    setTimeout(() => t.remove(), 160);
+  }, ms);
+}
+
+/** A grey placeholder the size of what is coming, so nothing moves when it arrives. */
+function skel(w, h) {
+  const s = el("span", "skel");
+  s.style.width = typeof w === "number" ? w + "px" : w;
+  s.style.height = h + "px";
+  return s;
+}
+
+function skelRows(n) {
+  const widths = ["58%", "44%", "66%", "38%", "52%", "61%"];
+  return Array.from({ length: n }, (_, i) => {
+    const row = el("li", "skel-row");
+    row.setAttribute("aria-hidden", "true");
+    const lines = el("div", "skel-lines");
+    lines.append(skel(widths[i % widths.length], 13), skel("28%", 10));
+    row.append(skel(32, 32), lines);
+    return row;
+  });
 }
 
 const fmt = new Intl.NumberFormat();
@@ -88,59 +111,90 @@ function avatar(name, url) {
   return a;
 }
 
-// ---------- menus ----------
+// Anything that moves stops while the window is hidden or minimized.
+function markHidden() {
+  document.documentElement.toggleAttribute("data-hidden", document.hidden);
+}
+document.addEventListener("visibilitychange", markHidden);
+markHidden();
 
-const MENUS = [["filter-btn", "filters"]];
+// ---------- pages ----------
 
-function closeMenus(except) {
-  if (except !== "settings") $("settings").hidden = true;
-  for (const [b, m] of MENUS) {
-    if (m === except) continue;
-    $(m).hidden = true;
-    $(b).setAttribute("aria-expanded", "false");
+const PAGES = ["home", "activity", "stream"];
+let page = PAGES.includes(store("page")) ? store("page") : "home";
+
+function go(to) {
+  if (!PAGES.includes(to)) return;
+  const changed = to !== page;
+  page = to;
+  store("page", to);
+  for (const p of PAGES) $("page-" + p).hidden = p !== to;
+  for (const b of document.querySelectorAll(".side .si[data-page]")) {
+    if (b.dataset.page === to) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
   }
+  if (changed) $("main").scrollTop = 0;
+  if (to === "stream") fitTitle();
 }
 
-for (const [b, m] of MENUS) {
-  $(b).addEventListener("click", (e) => {
-    e.stopPropagation();
-    const open = $(m).hidden;
-    closeMenus(m);
-    $(m).hidden = !open;
-    $(b).setAttribute("aria-expanded", String(open));
-  });
-  $(m).addEventListener("click", (e) => e.stopPropagation());
+for (const b of document.querySelectorAll("[data-page], [data-go]")) {
+  b.addEventListener("click", () => go(b.dataset.page || b.dataset.go));
 }
-document.addEventListener("click", () => closeMenus());
+go(page);
 
 // ---------- settings ----------
 
-$("account-btn").addEventListener("click", (e) => {
-  e.stopPropagation();
-  const open = $("settings").hidden;
-  closeMenus("settings");
-  $("settings").hidden = !open;
-});
-$("settings").querySelector(".dialog").addEventListener("click", (e) => e.stopPropagation());
-$("settings-close").addEventListener("click", () => closeMenus());
+let settingsFrom = null;
 
-// Dashboard preferences, saved on this computer. Each one shows or hides a part of the page.
-const PREF_DEFAULTS = { adbar: true, actions: true, info: true, compact: false, glow: true };
+function openSettings(pane) {
+  settingsFrom = document.activeElement;
+  $("settings").hidden = false;
+  showSettingsPane(pane || "accounts");
+  $("settings-close").focus();
+}
+
+function closeSettings() {
+  if ($("settings").hidden) return;
+  $("settings").hidden = true;
+  if (settingsFrom && settingsFrom.focus) settingsFrom.focus();
+}
+
+const PANE_TITLES = { accounts: "Accounts", display: "Display", about: "About" };
+function showSettingsPane(pane) {
+  for (const b of document.querySelectorAll("[data-set]")) {
+    if (b.dataset.set === pane) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  }
+  for (const p of document.querySelectorAll("[data-set-pane]")) p.hidden = p.dataset.setPane !== pane;
+  $("set-heading").textContent = PANE_TITLES[pane];
+}
+
+$("settings-btn").addEventListener("click", () => openSettings());
+$("settings-close").addEventListener("click", closeSettings);
+for (const b of document.querySelectorAll("[data-set]")) b.addEventListener("click", () => showSettingsPane(b.dataset.set));
+for (const back of document.querySelectorAll(".modal-back")) {
+  back.addEventListener("mousedown", (e) => {
+    if (e.target !== back) return;
+    if (back.id === "settings") closeSettings();
+    else if (back.id === "twitch-dialog") closeTwitchDialog();
+  });
+}
+
+// Display preferences, saved on this computer.
+const PREF_DEFAULTS = { adbar: true, actions: true, compact: false };
 const prefs = { ...PREF_DEFAULTS, ...(store("prefs") || {}) };
 
 function applyPrefs() {
   const b = document.body.classList;
   b.toggle("no-adbar", !prefs.adbar);
   b.toggle("no-actions", !prefs.actions);
-  b.toggle("no-info", !prefs.info);
-  b.toggle("compact", prefs.compact);
-  b.toggle("no-glow", !prefs.glow);
+  b.toggle("compact", !!prefs.compact);
+  for (const s of document.querySelectorAll("#prefs [data-pref]")) s.setAttribute("aria-checked", String(!!prefs[s.dataset.pref]));
 }
 
-for (const box of document.querySelectorAll("#prefs input[data-pref]")) {
-  box.checked = !!prefs[box.dataset.pref];
-  box.addEventListener("change", () => {
-    prefs[box.dataset.pref] = box.checked;
+for (const s of document.querySelectorAll("#prefs [data-pref]")) {
+  s.addEventListener("click", () => {
+    prefs[s.dataset.pref] = !prefs[s.dataset.pref];
     store("prefs", prefs);
     applyPrefs();
   });
@@ -162,39 +216,51 @@ $("win-close").addEventListener("click", () => appWindow.close().catch(console.w
 // built-in drag region) so that a window Windows has snapped keeps its current size when
 // moved, rather than jumping back to the size it had before it was snapped or resized.
 document.querySelector(".titlebar").addEventListener("mousedown", (e) => {
-  if (e.button !== 0 || !e.target.hasAttribute("data-drag-region")) return;
+  const target = e.target.closest("[data-drag-region]");
+  if (e.button !== 0 || !target || e.target.closest("button")) return;
   e.preventDefault();
   if (e.detail === 2) appWindow.toggleMaximize().catch(console.warn);
   else if (e.detail === 1) invoke("start_window_drag").catch(console.warn);
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  closeMenus();
   if (!$("twitch-dialog").hidden) closeTwitchDialog();
+  else closeSettings();
 });
 
 // ---------- auth ----------
 
 let auth = { sylva: null, twitch: null, defaultTwitchClientId: null };
 
+function greeting() {
+  const h = new Date().getHours();
+  return h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
 function applyAuth(a) {
   const before = auth.sylva ? auth.sylva.key : null;
   auth = a;
   const sy = a.sylva;
   $("signin").hidden = !!sy;
+  document.body.classList.toggle("signed-out", !sy);
   const name = sy ? sy.name || sy.login || "Streamer" : "";
-  $("brand-channel").textContent = name;
+  $("me-name").textContent = name;
+  $("me-sub").textContent = a.twitch ? "Twitch connected" : "Twitch not connected";
   const av = avatar(name || "?", sy && sy.avatar);
   av.id = "user-avatar";
+  if (!sy) av.textContent = "";
   $("user-avatar").replaceWith(av);
-  $("menu-sy-name").textContent = sy ? name : "-";
-  $("menu-tw-name").textContent = a.twitch ? a.twitch.login : "Not connected";
+  $("home-title").textContent = name ? greeting() + ", " + name : "Welcome back";
+  $("menu-sy-name").textContent = sy ? "Signed in as " + name : "Not signed in";
+  $("menu-tw-name").textContent = a.twitch ? "Connected as " + a.twitch.login : "Not connected";
   $("tw-signout").hidden = !a.twitch;
   $("tw-connect-menu").hidden = !!a.twitch;
   $("sy-signout").hidden = !sy;
   // Another channel (or signed out): start the feed over.
   if ((sy ? sy.key : null) !== before) {
     feed = [];
+    feedLoaded = false;
+    resetStats();
     renderFeed();
   }
   loadChannelInfo();
@@ -206,14 +272,6 @@ function applyAuth(a) {
 // ---------- held tips ----------
 // Big, first-time or risky tips wait in Sylva until someone approves them.
 
-function tipMoney(amount, currency) {
-  try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
-  } catch (_) {
-    return amount + " " + currency;
-  }
-}
-
 async function loadHeldTips() {
   if (!auth.sylva) { $("sec-tips").hidden = true; return; }
   let tips = [];
@@ -224,16 +282,19 @@ async function loadHeldTips() {
   }
   $("sec-tips").hidden = tips.length === 0;
   $("held-tips").replaceChildren(...tips.map((t) => {
-    const li = el("li", "held-tip");
-    const main = el("div", "held-main");
-    const top = el("div", "held-top");
-    top.append(el("b", "", t.name), el("span", "held-amount", tipMoney(t.amount, t.currency)));
+    const li = el("li", "gr");
+    const tile = el("span", "tile");
+    tile.appendChild(icon("i-tip"));
+    const main = el("div", "gr-main");
+    const top = el("div", "t1");
+    top.append(el("span", null, t.name + " "), el("span", "held-amount", money(t.amount, t.currency)));
     main.append(top);
     if (t.message) main.append(el("p", "held-msg", t.message));
     const why = [t.holdReason, t.country ? "from " + t.country : null].filter(Boolean).join(", ");
-    if (why) main.append(el("p", "held-why", why.charAt(0).toUpperCase() + why.slice(1)));
-    const show = el("button", "btn primary", "Show it");
-    const refund = el("button", "btn", "Refund");
+    if (why) main.append(el("span", "t2", why.charAt(0).toUpperCase() + why.slice(1)));
+    const show = el("button", "btn sm primary", "Show it");
+    const refund = el("button", "btn sm", "Refund");
+    show.type = refund.type = "button";
     const decide = async (btn, approve) => {
       show.disabled = refund.disabled = true;
       const ok = await runAction(btn, () => invoke("decide_tip", { id: t.id, approve }), approve ? "Tip sent to the stream" : "Tip refunded");
@@ -243,14 +304,14 @@ async function loadHeldTips() {
     };
     show.addEventListener("click", () => decide(show, true));
     refund.addEventListener("click", () => decide(refund, false));
-    const side = el("div", "held-actions");
-    side.append(show, refund);
-    li.append(main, side);
+    const side = el("div", "gr-ctl");
+    side.append(refund, show);
+    li.append(tile, main, side);
     return li;
   }));
 }
 // A slow check in case a change was missed while offline.
-setInterval(loadHeldTips, 60000);
+setInterval(() => { if (!document.hidden) loadHeldTips(); }, 60000);
 
 // ---------- signing in with Sylva ----------
 // Sylva is where alerts, overlays and the bot live. Sylva Desktop shows Sylva's
@@ -277,17 +338,15 @@ $("signin-form").addEventListener("submit", async (e) => {
 });
 
 $("sy-signout").addEventListener("click", async () => {
-  closeMenus();
+  closeSettings();
   try {
     applyAuth(await invoke("sylva_sign_out"));
-    resetStats();
   } catch (x) {
     toast(String(x), true);
   }
 });
 
 $("tw-signout").addEventListener("click", async () => {
-  closeMenus();
   try {
     applyAuth(await invoke("twitch_sign_out"));
     refreshViewers();
@@ -305,94 +364,32 @@ document.addEventListener("click", (e) => {
 
 // ---------- activity feed ----------
 
+// The same groups, names and icons as Sylva's activity.
 const GROUPS = [
-  { id: "follow", label: "Follows", color: "c-follow", icon: "i-heart", kinds: ["follow"] },
-  { id: "sub", label: "Subs", color: "c-sub", icon: "i-star", kinds: ["subscriber"] },
-  { id: "gift", label: "Gifts", color: "c-gift", icon: "i-gift", kinds: ["giftedSub", "communityGift"] },
-  { id: "cheer", label: "Bits", color: "c-bits", icon: "i-gem", kinds: ["cheer"] },
-  { id: "tip", label: "Tips", color: "c-tip", icon: "i-tip", kinds: ["tip"] },
-  { id: "redemption", label: "Rewards", color: "c-reward", icon: "i-sparkles", kinds: ["redemption"] },
-  { id: "raid", label: "Raids", color: "c-raid", icon: "i-swords", kinds: ["raid", "host"] },
-  { id: "other", label: "Other", color: "c-other", icon: "i-dot", kinds: ["other"] },
+  { id: "follow", label: "Follows", icon: "i-heart", kinds: ["follow"] },
+  { id: "sub", label: "Subs", icon: "i-star", kinds: ["subscriber"] },
+  { id: "gift", label: "Gifts", icon: "i-gift", kinds: ["giftedSub", "communityGift"] },
+  { id: "cheer", label: "Bits", icon: "i-zap", kinds: ["cheer"] },
+  { id: "raid", label: "Raids", icon: "i-raid", kinds: ["raid", "host"] },
+  { id: "tip", label: "Tips", icon: "i-tip", kinds: ["tip"] },
+  { id: "redemption", label: "Redemptions", icon: "i-gem", kinds: ["redemption"] },
+  { id: "other", label: "Other", icon: "i-sparkles", kinds: ["other"] },
 ];
 const KNOWN_KINDS = new Set(GROUPS.flatMap((g) => g.kinds));
+const CHIPS = [{ id: "all", label: "All" }, ...GROUPS.filter((g) => g.id !== "other").map((g) => ({ id: g.id, label: g.label }))];
 const MAX_ITEMS = 500;
+const RECENT = 6;
 const DAY = 86400000;
 
 let feed = [];
+let feedLoaded = false;
 // Test events leave the feed 30 seconds after they came in, as on Sylva.
 const TEST_TTL = 30000;
-// Groups the user picked. Empty means everything.
-let shown = new Set((store("shownGroups") || []).filter((g) => GROUPS.some((x) => x.id === g)));
+let show = CHIPS.some((c) => c.id === store("activityShow")) ? store("activityShow") : "all";
+let query = "";
 
 function groupOf(kind) {
   return GROUPS.find((g) => g.kinds.includes(kind)) || GROUPS[GROUPS.length - 1];
-}
-
-function last24(a) {
-  return Date.now() - Date.parse(a.createdAt) < DAY;
-}
-
-/** Filter buttons with counts, and the colored mix bar for the last 24 hours. */
-function renderSummary() {
-  const counts = Object.fromEntries(GROUPS.map((g) => [g.id, 0]));
-  let total = 0;
-  for (const a of feed) {
-    if (!last24(a)) continue;
-    counts[groupOf(a.kind).id]++;
-    total++;
-  }
-
-  const mix = $("mix");
-  mix.classList.toggle("empty", total === 0);
-  if (total === 0) {
-    const s = el("span");
-    s.style.flexGrow = "1";
-    mix.replaceChildren(s);
-  } else {
-    mix.replaceChildren(
-      ...GROUPS.filter((g) => counts[g.id] > 0).map((g) => {
-        const s = el("span", g.color);
-        s.style.flexGrow = String(counts[g.id]);
-        s.title = num(counts[g.id]) + " " + g.label.toLowerCase();
-        return s;
-      })
-    );
-  }
-  $("mix-label").textContent = total === 1 ? "1 event in the last 24 hours" : num(total) + " events in the last 24 hours";
-
-  // The Filter menu: one row per kind, with its count. Nothing picked means everything.
-  const row = (label, cls, count, on, onClick) => {
-    const b = el("button", "filter-row" + (cls ? " " + cls : ""));
-    b.type = "button";
-    b.setAttribute("role", "menuitemcheckbox");
-    b.setAttribute("aria-checked", String(on));
-    const check = el("span", "check");
-    check.appendChild(icon("i-check"));
-    b.append(check, el("span", "bar"), el("span", "filter-name", label), el("span", "count", num(count)));
-    b.addEventListener("click", onClick);
-    return b;
-  };
-  const buttons = [
-    row("Everything", "all", total, shown.size === 0, () => {
-      shown.clear();
-      store("shownGroups", []);
-      renderFeed();
-    }),
-    el("div", "menu-sep"),
-  ];
-  for (const g of GROUPS) {
-    if (g.id === "other" && counts.other === 0 && !shown.has("other")) continue;
-    buttons.push(row(g.label, g.color, counts[g.id], shown.has(g.id), () => {
-      if (shown.has(g.id)) shown.delete(g.id);
-      else shown.add(g.id);
-      store("shownGroups", [...shown]);
-      renderFeed();
-    }));
-  }
-  $("filter-label").textContent = shown.size ? "Filter (" + shown.size + ")" : "Filter";
-  $("filter-btn").classList.toggle("on", shown.size > 0);
-  $("filters").replaceChildren(...buttons);
 }
 
 /**
@@ -454,7 +451,6 @@ function describe(a) {
       if (w.message !== undefined) message = w.message;
     }
   }
-  if (a.test) pills.push("Test");
   return { parts, pills, message };
 }
 
@@ -550,7 +546,7 @@ function renderItem(a, fresh) {
   const g = groupOf(a.kind);
   const d = describe(a);
   const kind = KNOWN_KINDS.has(a.kind) ? a.kind : "other";
-  const li = el("li", "item k-" + kind + (fresh ? " fresh" : ""));
+  const li = el("li", "item" + (fresh ? " fresh" : ""));
   li.dataset.id = a.id;
 
   const tile = el("span", "tile");
@@ -561,9 +557,10 @@ function renderItem(a, fresh) {
   title.append(...d.parts);
   main.appendChild(title);
   if (d.message) main.appendChild(el("p", "item-msg", d.message));
-  if (d.pills.length) {
+  if (d.pills.length || a.test) {
     const pills = el("div", "pills");
     for (const p of d.pills) pills.appendChild(el("span", "pill", p));
+    if (a.test) pills.appendChild(el("span", "pill test", "test"));
     main.appendChild(pills);
   }
 
@@ -575,41 +572,147 @@ function renderItem(a, fresh) {
   }
   side.appendChild(time);
 
-  const replay = el("button", "replay");
-  replay.type = "button";
-  replay.title = "Play this alert again";
-  replay.append(icon("i-replay"), document.createTextNode("Replay"));
-  replay.addEventListener("click", async () => {
-    replay.disabled = true;
-    try {
-      await invoke("replay_activity", { id: a.id });
-      toast("Alert replayed");
-    } catch (x) {
-      toast(String(x), true);
-    } finally {
-      replay.disabled = false;
-    }
-  });
-
   // Stream changes, polls and the like have no alert to replay.
-  if (kind === "other") li.append(tile, main, side);
-  else li.append(tile, main, side, replay);
+  if (kind === "other") {
+    side.appendChild(el("span", "no-replay"));
+  } else {
+    const replay = el("button", "replay");
+    replay.type = "button";
+    replay.title = "Play this alert again";
+    replay.setAttribute("aria-label", "Play this alert again");
+    replay.appendChild(icon("i-replay"));
+    replay.addEventListener("click", async () => {
+      replay.disabled = true;
+      try {
+        await invoke("replay_activity", { id: a.id });
+        toast("Alert replayed");
+      } catch (x) {
+        toast(String(x), true);
+      } finally {
+        replay.disabled = false;
+      }
+    });
+    side.appendChild(replay);
+  }
+  li.append(tile, main, side);
   return li;
 }
 
-function visible(a) {
-  return !shown.size || shown.has(groupOf(a.kind).id);
+function matches(a) {
+  if (show !== "all" && groupOf(a.kind).id !== show) return false;
+  if (!query) return true;
+  const hay = [a.displayName, a.username, a.sender, a.message, a.redemption].filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(query);
+}
+
+function dayKey(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "unknown" : d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+}
+
+function dayName(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Earlier";
+  const today = new Date();
+  const d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const days = Math.round((t0 - d0) / DAY);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", ...(d.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}) });
+}
+
+function daySection(key, iso) {
+  const sec = el("section", "sect act-day");
+  sec.dataset.day = key;
+  const head = el("div", "sect-head");
+  const h = el("div");
+  h.appendChild(el("h2", null, dayName(iso)));
+  head.appendChild(h);
+  const box = el("div", "grp");
+  const ol = el("ol", "feed");
+  box.appendChild(ol);
+  sec.append(head, box);
+  return sec;
+}
+
+/** The latest few on Home. */
+function renderRecent() {
+  const list = $("recent");
+  if (!feedLoaded) {
+    list.replaceChildren(...skelRows(4));
+    $("recent-empty").hidden = true;
+    return;
+  }
+  list.replaceChildren(...feed.slice(0, RECENT).map((a) => renderItem(a, false)));
+  $("recent-empty").hidden = feed.length > 0;
+}
+
+/** Everything on Activity, under a heading per day. */
+function renderActivity() {
+  const days = $("act-days");
+  if (!feedLoaded) {
+    const sec = daySection("loading", null);
+    sec.querySelector("h2").replaceChildren(skel(60, 12));
+    sec.querySelector("ol").replaceChildren(...skelRows(6));
+    days.replaceChildren(sec);
+    $("act-empty").hidden = true;
+    return;
+  }
+  const items = feed.filter(matches);
+  const sections = [];
+  let cur = null;
+  for (const a of items) {
+    const key = dayKey(a.createdAt);
+    if (!cur || cur.dataset.day !== key) {
+      cur = daySection(key, a.createdAt);
+      sections.push(cur);
+    }
+    cur.querySelector("ol").appendChild(renderItem(a, false));
+  }
+  days.replaceChildren(...sections);
+  $("act-empty").hidden = items.length > 0;
+  $("act-empty-text").textContent = feed.length
+    ? "Nothing here for this filter yet."
+    : "No activity yet. Follows, subs, bits and rewards appear here the moment they happen.";
+}
+
+function renderChips() {
+  $("act-chips").replaceChildren(...CHIPS.map((c) => {
+    const b = el("button", "btn sm", c.label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(show === c.id));
+    b.addEventListener("click", () => {
+      show = c.id;
+      store("activityShow", show);
+      renderChips();
+      renderActivity();
+    });
+    return b;
+  }));
 }
 
 function renderFeed() {
-  const items = feed.filter(visible);
-  $("feed").replaceChildren(...items.map((a) => renderItem(a, false)));
-  const empty = $("feed-empty");
-  empty.hidden = items.length > 0;
-  empty.textContent = feed.length
-    ? "Nothing here for this filter yet."
-    : "No activity yet. Follows, subs, bits and rewards appear here the moment they happen.";
-  renderSummary();
+  renderRecent();
+  renderActivity();
+}
+
+let searchTimer = null;
+$("act-search").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    query = $("act-search").value.trim().toLowerCase();
+    renderActivity();
+  }, 120);
+});
+
+function removeRows(id) {
+  for (const li of document.querySelectorAll(".feed li[data-id]")) {
+    if (li.dataset.id !== id) continue;
+    const sec = li.closest(".act-day");
+    li.remove();
+    if (sec && !sec.querySelector("li")) sec.remove();
+  }
 }
 
 /** Take a test event out of the feed once its 30 seconds are up. */
@@ -618,10 +721,9 @@ function expireTest(a, live) {
   const left = live || !a.receivedAt ? TEST_TTL : Math.min(TEST_TTL, Math.max(0, a.receivedAt + TEST_TTL - Date.now()));
   a.expires = setTimeout(() => {
     feed = feed.filter((x) => x !== a);
-    const li = [...$("feed").children].find((x) => x.dataset.id === a.id);
-    if (li) li.remove();
-    $("feed-empty").hidden = feed.some(visible);
-    renderSummary();
+    removeRows(a.id);
+    renderRecent();
+    $("act-empty").hidden = feed.some(matches);
   }, left);
 }
 
@@ -630,54 +732,68 @@ function addLive(a) {
   if (a.test) expireTest(a, true);
   feed.unshift(a);
   if (feed.length > MAX_ITEMS) feed.length = MAX_ITEMS;
-  if (visible(a)) {
-    $("feed").prepend(renderItem(a, true));
-    const extra = $("feed").children[MAX_ITEMS];
-    if (extra) extra.remove();
-    $("feed-empty").hidden = true;
+  if (!feedLoaded) return;
+
+  // Home: the new one slides in on top, the oldest of the few leaves.
+  $("recent").prepend(renderItem(a, true));
+  while ($("recent").children.length > RECENT) $("recent").lastElementChild.remove();
+  $("recent-empty").hidden = true;
+
+  // Activity: into today's list when it is already there, otherwise draw the page again.
+  if (!matches(a)) return;
+  const first = $("act-days").firstElementChild;
+  if (first && first.dataset.day === dayKey(a.createdAt)) {
+    first.querySelector("ol").prepend(renderItem(a, true));
+    $("act-empty").hidden = true;
+  } else {
+    renderActivity();
   }
-  renderSummary();
 }
 
 async function loadFeed() {
   if (!auth.sylva) return;
   const btn = $("feed-refresh");
   btn.classList.add("spin");
+  btn.disabled = true;
   try {
     const history = await invoke("get_feed", { limit: 250 });
     const known = new Set(history.map((a) => a.id));
     // Keep live items that arrived while history was loading.
     feed = feed.filter((a) => !known.has(a.id)).concat(history).slice(0, MAX_ITEMS);
     for (const a of feed) if (a.test) expireTest(a, false);
-    renderFeed();
   } catch (x) {
     toast("Could not load activity: " + x, true);
   } finally {
+    feedLoaded = true;
+    renderFeed();
     btn.classList.remove("spin");
+    btn.disabled = false;
   }
 }
 
 $("feed-refresh").addEventListener("click", loadFeed);
 
 setInterval(() => {
-  for (const t of document.querySelectorAll("#feed time[datetime]")) t.textContent = ago(t.dateTime);
-  renderSummary();
+  if (document.hidden) return;
+  for (const t of document.querySelectorAll(".feed time[datetime]")) t.textContent = ago(t.dateTime);
 }, 30000);
 
 // ---------- numbers ----------
 
 function resetStats() {
-  for (const id of ["stat-viewers", "stat-followers", "stat-subs"]) $(id).textContent = "-";
-  setLive(null);
-  setViewerNote(null);
+  $("stat-viewers").replaceChildren(skel(72, 26));
+  $("stat-followers").replaceChildren(skel(96, 26));
+  $("stat-subs").replaceChildren(skel(72, 26));
+  $("viewer-foot").className = "total-foot";
+  $("viewer-foot").replaceChildren(skel(60, 11));
 }
 
-/** The Live / Offline pill above the viewer count. `null` means not known. */
-function setLive(live) {
-  const pill = $("live-pill");
-  pill.dataset.state = live === null ? "unknown" : live ? "live" : "offline";
-  $("live-text").textContent = live === null ? "Not available" : live ? "Live" : "Offline";
-  $("viewers-label").hidden = !live;
+/** The line under the viewer count: live, offline, or why there is no number. */
+function setViewerFoot(text, live = false, detail = "") {
+  const f = $("viewer-foot");
+  f.className = "total-foot" + (live ? " live" : "");
+  f.textContent = text;
+  f.title = detail;
 }
 
 let statsTimer = null;
@@ -691,6 +807,7 @@ async function refreshStats() {
     $("stat-subs").textContent = num(s.subscribers);
   } catch (x) {
     console.warn(x);
+    for (const id of ["stat-followers", "stat-subs"]) if ($(id).querySelector(".skel")) $(id).textContent = "-";
   }
 }
 
@@ -700,17 +817,10 @@ function refreshStatsSoon() {
   statsSoon = setTimeout(refreshStats, 3000);
 }
 
-/** A short muted line under the viewer count, only when the count cannot be shown. */
-function setViewerNote(text, detail) {
-  const note = $("viewer-note");
-  note.hidden = !text;
-  note.textContent = text || "";
-  note.title = detail || "";
-}
-
 // Viewers change all the time, so they are checked often. No Twitch sign-in is needed.
 // With Twitch connected the count comes from the official API, which is cheap to ask every
 // 5 seconds. Without it, the public lookup is asked every 10 seconds to stay polite.
+// A hidden window checks once a minute.
 const VIEWER_POLL_MS = { twitch: 5000, public: 10000, none: 30000 };
 let viewerTimer = null;
 let viewerSource = "public";
@@ -724,23 +834,20 @@ async function refreshViewers() {
     const n = $("stat-viewers");
     if (v.source === "none") {
       n.textContent = "-";
-      n.title = "";
-      setLive(null);
-      setViewerNote(auth.sylva ? "No Twitch channel on this Sylva account" : null);
+      setViewerFoot(auth.sylva ? "No Twitch channel on this account" : "Not available");
       return;
     }
     // Offline shows a dash, not 0, so it never looks like an empty stream.
     n.textContent = v.live ? num(v.viewers) : "-";
     n.title = "Checked at " + new Date().toLocaleTimeString();
-    setLive(v.live);
-    setViewerNote(null);
+    setViewerFoot(v.live ? "Live now" : "Offline", v.live);
   } catch (x) {
     $("stat-viewers").textContent = "-";
-    setLive(null);
-    setViewerNote("Viewer count unavailable", String(x));
+    setViewerFoot("Viewer count unavailable", false, String(x));
   } finally {
     // Only the latest check schedules the next one, so checks never pile up.
-    if (run === viewerRun) viewerTimer = setTimeout(refreshViewers, VIEWER_POLL_MS[viewerSource] || 10000);
+    const wait = document.hidden ? 60000 : VIEWER_POLL_MS[viewerSource] || 10000;
+    if (run === viewerRun) viewerTimer = setTimeout(refreshViewers, wait);
   }
 }
 
@@ -749,6 +856,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   refreshViewers();
   if (auth.twitch) loadChannelInfo(true);
+  if (ads) renderAd();
 });
 
 // ---------- quick actions ----------
@@ -767,24 +875,39 @@ async function runAction(btn, fn, okText) {
   }
 }
 
-/** A button that switches between two alert actions, such as mute and unmute. */
-function toggleButton(btn, actions, labels, icons, toasts) {
-  btn.addEventListener("click", async () => {
-    const on = btn.getAttribute("aria-pressed") === "true";
-    const ok = await runAction(btn, () => invoke("alert_action", { action: on ? actions[1] : actions[0] }), on ? toasts[1] : toasts[0]);
-    if (!ok) return;
-    const now = !on;
-    btn.setAttribute("aria-pressed", String(now));
-    btn.querySelector("span:not(.qa-icon)").textContent = now ? labels[1] : labels[0];
-    btn.querySelector("use").setAttribute("href", "#" + (now ? icons[1] : icons[0]));
-  });
-}
+// Each switch-like action: its words and icon when off, then when on.
+const TOGGLES = {
+  "act-mute": {
+    actions: ["mute", "unmute"],
+    off: { t1: "Mute alerts", t2: "Alerts play with sound", icon: "i-vol" },
+    on: { t1: "Unmute alerts", t2: "Alerts are muted", icon: "i-volx" },
+    toasts: ["Alerts muted", "Alerts unmuted"],
+  },
+  "act-pause": {
+    actions: ["pause", "unpause"],
+    off: { t1: "Pause alerts", t2: "Alerts play as they come", icon: "i-pause" },
+    on: { t1: "Resume alerts", t2: "Alerts wait in line", icon: "i-play" },
+    toasts: ["Alerts paused", "Alerts resumed"],
+  },
+};
 
 /** Show a toggle as on or off. */
-function setToggle(btn, on, labels, icons) {
+function setToggle(id, on) {
+  const btn = $(id);
+  const w = on ? TOGGLES[id].on : TOGGLES[id].off;
   btn.setAttribute("aria-pressed", String(on));
-  btn.querySelector("span:not(.qa-icon)").textContent = on ? labels[1] : labels[0];
-  btn.querySelector("use").setAttribute("href", "#" + (on ? icons[1] : icons[0]));
+  btn.querySelector(".t1").textContent = w.t1;
+  btn.querySelector(".t2").textContent = w.t2;
+  btn.querySelector("use").setAttribute("href", "#" + w.icon);
+}
+
+for (const id of Object.keys(TOGGLES)) {
+  const t = TOGGLES[id];
+  $(id).addEventListener("click", async () => {
+    const on = $(id).getAttribute("aria-pressed") === "true";
+    const ok = await runAction($(id), () => invoke("alert_action", { action: on ? t.actions[1] : t.actions[0] }), on ? t.toasts[1] : t.toasts[0]);
+    if (ok) setToggle(id, !on);
+  });
 }
 
 /** Start the mute and pause buttons the way Sylva's queue is now. */
@@ -792,15 +915,13 @@ async function refreshAlertState() {
   if (!auth.sylva) return;
   try {
     const s = await invoke("get_alert_state");
-    setToggle($("act-mute"), s.muted, ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"]);
-    setToggle($("act-pause"), s.paused, ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"]);
+    setToggle("act-mute", !!s.muted);
+    setToggle("act-pause", !!s.paused);
   } catch (x) {
     console.warn(x);
   }
 }
 
-toggleButton($("act-mute"), ["mute", "unmute"], ["Mute alerts", "Unmute alerts"], ["i-vol", "i-volx"], ["Alerts muted", "Alerts unmuted"]);
-toggleButton($("act-pause"), ["pause", "unpause"], ["Pause alerts", "Resume alerts"], ["i-pause", "i-play"], ["Alerts paused", "Alerts resumed"]);
 $("act-skip").addEventListener("click", (e) =>
   runAction(e.currentTarget, () => invoke("alert_action", { action: "skip" }), "Skipped the current alert"));
 $("act-reload").addEventListener("click", (e) =>
@@ -812,6 +933,7 @@ $("act-reload").addEventListener("click", (e) =>
 let channelInfo = null;
 // The category picked from the list: { id, name, art }.
 let pickedCategory = null;
+let savingInfo = false;
 
 /** Box art for a category, sized for the picker. Twitch serves any size from the same link. */
 function boxArt(c) {
@@ -836,7 +958,6 @@ function showCategoryArt(c) {
   const url = boxArt(c);
   if (box.dataset.url === String(url)) return;
   box.dataset.url = String(url);
-  box.classList.toggle("has-art", !!url);
   box.replaceChildren(icon("i-image"));
   if (url) box.appendChild(artImg(url));
 }
@@ -850,7 +971,9 @@ function infoChanged() {
 }
 
 function updateSaveButton() {
-  $("info-save").disabled = !infoChanged();
+  const changed = infoChanged();
+  $("info-save").disabled = !changed || savingInfo;
+  $("info-state").textContent = savingInfo ? "Saving" : !channelInfo ? "Reading from Twitch" : changed ? "Not saved yet" : "Saved on Twitch";
   const n = $("info-title-input").value.length;
   const count = $("title-count");
   count.textContent = n + "/140";
@@ -875,6 +998,7 @@ async function loadChannelInfo(quiet = false) {
     channelInfo = null;
     return;
   }
+  updateSaveButton();
   try {
     const info = await invoke("get_channel_info");
     if (!info) return;
@@ -902,8 +1026,9 @@ $("info-connect-btn").addEventListener("click", openTwitchDialog);
 /** The title box grows with the text, so the whole title stays readable. */
 function fitTitle() {
   const t = $("info-title-input");
+  if (!t.offsetParent) return;
   t.style.height = "auto";
-  t.style.height = t.scrollHeight + 2 + "px";
+  t.style.height = t.scrollHeight + "px";
 }
 
 $("info-title-input").addEventListener("input", () => {
@@ -1009,6 +1134,8 @@ $("info-cat-input").addEventListener("keydown", (e) => {
 });
 
 $("info-cat-input").addEventListener("blur", () => {
+  clearTimeout(catTimer);
+  catRequest++;
   closeCatList();
   // Leaving the box without picking puts the current category back.
   if (!pickedCategory && channelInfo) {
@@ -1021,22 +1148,23 @@ $("info-cat-input").addEventListener("blur", () => {
 
 $("info-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!infoChanged()) return;
+  if (!infoChanged() || savingInfo) return;
   const title = $("info-title-input").value.trim();
   const args = {
     title: title !== channelInfo.title ? title : null,
     categoryId: pickedCategory && pickedCategory.id !== channelInfo.game_id ? pickedCategory.id : null,
   };
-  const btn = $("info-save");
-  btn.disabled = true;
-  btn.textContent = "Saving...";
+  savingInfo = true;
+  updateSaveButton();
   try {
-    showChannelInfo(await invoke("update_channel", args));
+    const info = await invoke("update_channel", args);
+    savingInfo = false;
+    showChannelInfo(info);
     toast("Stream info updated");
   } catch (x) {
     toast(String(x), true);
   } finally {
-    btn.textContent = "Save";
+    savingInfo = false;
     updateSaveButton();
   }
 });
@@ -1044,9 +1172,11 @@ $("info-form").addEventListener("submit", async (e) => {
 // ---------- Twitch connection ----------
 
 let deviceUri = null;
+let twitchFrom = null;
 
 function openTwitchDialog() {
-  closeMenus();
+  twitchFrom = $("settings").hidden ? document.activeElement : $("settings-btn");
+  closeSettings();
   if (!$("tw-client-id").value) $("tw-client-id").value = store("twitchClientId") || auth.defaultTwitchClientId || "";
   $("twitch-dialog").hidden = false;
   $("tw-client-id").focus();
@@ -1060,7 +1190,9 @@ async function cancelDeviceFlow() {
 }
 
 async function closeTwitchDialog() {
+  if ($("twitch-dialog").hidden) return;
   $("twitch-dialog").hidden = true;
+  if (twitchFrom && twitchFrom.focus) twitchFrom.focus();
   await cancelDeviceFlow();
 }
 
@@ -1145,6 +1277,7 @@ function renderAd() {
     $("ad-progress").style.width = Math.max(0, Math.min(100, progress * 100)) + "%";
   };
   $("ad-reconnect").hidden = !(ads && ads.needsReconnect);
+  $("ad-time").hidden = !!(ads && ads.needsReconnect);
   if (!auth.twitch || !ads) {
     bar.hidden = true;
     return;
@@ -1159,7 +1292,7 @@ function renderAd() {
   if (run) {
     const left = run.start + run.length - now;
     show("running", "Ads are running", run.length + " second break. Back at " + timeAt(run.start + run.length) + ".",
-      clock(left) + " left", (now - run.start) / run.length);
+      clock(left), (now - run.start) / run.length);
     return;
   }
   if (!sch || !sch.nextAdAt) {
@@ -1174,7 +1307,7 @@ function renderAd() {
     show("soon", "Ad break soon", len + " at " + timeAt(sch.nextAdAt) + ".", clock(until), 1 - until / AD_SOON_S);
   } else {
     const snoozes = sch.snoozeCount ? ", " + sch.snoozeCount + (sch.snoozeCount === 1 ? " snooze" : " snoozes") + " left" : "";
-    show("", "Next ad break", len + " at " + timeAt(sch.nextAdAt) + snoozes + ".", "in " + minutes(until), 0);
+    show("", "Next ad break", len + " at " + timeAt(sch.nextAdAt) + snoozes + ".", minutes(until), 0);
   }
 }
 
@@ -1208,8 +1341,9 @@ async function refreshAds() {
   if (next) adTimer = setTimeout(refreshAds, next);
 }
 
+// The countdown ticks every second while the window can be seen.
 setInterval(() => {
-  if (ads && !$("adbar").hidden) renderAd();
+  if (ads && !document.hidden && !$("adbar").hidden) renderAd();
 }, 1000);
 
 $("ad-reconnect").addEventListener("click", openTwitchDialog);
@@ -1251,6 +1385,7 @@ async function checkUpdates(manual = false) {
 const UPDATE_STEPS = { download: "Step 1 of 3: Downloading changes", build: "Step 2 of 3: Building", restart: "Step 3 of 3: Restarting" };
 
 function showUpdateStatus(s) {
+  closeSettings();
   $("update-dialog").hidden = false;
   const failed = s.step === "error";
   $("update-progress").hidden = failed;
@@ -1289,14 +1424,12 @@ $("update-close").addEventListener("click", () => {
   updating = false;
 });
 
-$("check-update").addEventListener("click", () => {
-  closeMenus();
-  checkUpdates(true);
-});
+$("check-update").addEventListener("click", () => checkUpdates(true));
 
 // ---------- startup ----------
 
 async function start() {
+  renderChips();
   renderFeed();
 
   await listen("activity", (e) => {
