@@ -36,6 +36,8 @@ fn main() {
             commands::get_alert_state,
             commands::reload_overlays,
             commands::replay_activity,
+            commands::get_held_tips,
+            commands::decide_tip,
             commands::sylva_sign_in,
             commands::sylva_cancel_sign_in,
             commands::sylva_sign_out,
