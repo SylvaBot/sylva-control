@@ -51,5 +51,5 @@ fn main() {
             window::start_window_drag,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Sylva Desktop");
+        .expect("error while running Sylva Control");
 }

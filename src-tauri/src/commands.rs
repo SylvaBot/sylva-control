@@ -21,7 +21,7 @@ const DEFAULT_TWITCH_CLIENT_ID: Option<&str> = match option_env!("CORTEX_TWITCH_
     None => option_env!("PINE_TWITCH_CLIENT_ID"),
 };
 
-const SYLVA_GONE: &str = "Sylva no longer accepts Sylva Desktop. Sign in again.";
+const SYLVA_GONE: &str = "Sylva no longer accepts Sylva Control. Sign in again.";
 
 fn sylva_err(e: Error) -> String {
     if e.is_unauthorized() {
@@ -327,7 +327,7 @@ pub async fn update_channel(
         .await
         .map_err(|e| {
             if e.is_unauthorized() {
-                "Twitch did not allow the change. Disconnect and connect Twitch again in Settings so Sylva Desktop can ask for permission to edit your title and category.".to_string()
+                "Twitch did not allow the change. Disconnect and connect Twitch again in Settings so Sylva Control can ask for permission to edit your title and category.".to_string()
             } else {
                 e.to_string()
             }

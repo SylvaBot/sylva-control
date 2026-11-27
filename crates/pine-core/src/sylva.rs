@@ -1,6 +1,6 @@
-//! Sylva: the streamer's own platform. Sylva Desktop signs in with a device code and
+//! Sylva: the streamer's own platform. Sylva Control signs in with a device code and
 //! reads the same activity every Sylva page shows, so the feed is one feed
-//! everywhere. API: docs/api.md in haruxee/sylva.
+//! everywhere. API: docs/api.md in SylvaBot/sylva.
 
 use crate::activity::{Activity, ActivityKind};
 use crate::error::{check, Error, Result};
@@ -42,7 +42,7 @@ pub struct DeviceCode {
 pub async fn start_device_flow(http: &reqwest::Client, base: &str) -> Result<DeviceCode> {
     let resp = http
         .post(format!("{base}/v1/device/code"))
-        .json(&json!({ "clientName": "Sylva Desktop" }))
+        .json(&json!({ "clientName": "Sylva Control" }))
         .send()
         .await?;
     Ok(check(resp).await?.json().await?)
@@ -237,7 +237,7 @@ pub struct AlertState {
     pub overlays_connected: u64,
 }
 
-/// A Sylva event as Sylva Desktop's activity. Chat is left out. The id is the
+/// A Sylva event as Sylva Control's activity. Chat is left out. The id is the
 /// event's sequence number, which is what a replay takes.
 pub fn from_sylva(e: &Value) -> Option<Activity> {
     let seq = e.get("seq")?.as_u64()?;
