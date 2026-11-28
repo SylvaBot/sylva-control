@@ -2,7 +2,7 @@
 //!
 //! YouTube's own apps ask `youtubei/v1/player` for a video and get direct
 //! links to each audio and video stream. Sylva Control asks the same way, as
-//! two of those apps (Android VR, then iOS), whose answers carry plain links
+//! two of those apps (iOS, then Android VR), whose answers carry plain links
 //! that need no script from YouTube's web player to unlock. It takes only the
 //! audio stream (AAC in MP4, itag 140, about 1 MB a minute), so no video is
 //! ever downloaded, and no ad is either: ads are separate videos the apps
@@ -13,6 +13,11 @@
 //! song in 1 MiB pieces (`&range=`, as YouTube's apps do) before playing:
 //! a 4 minute song is about 4 MB, seeking is instant, and a network hiccup
 //! mid song cannot stop the music.
+//!
+//! Tested 2026-11-28 from a Cloudflare Worker: Android VR links serve the
+//! first megabyte and then refuse the rest (HTTP 403), iOS links serve the
+//! whole song. So iOS goes first, and each client is tried from lookup to
+//! the last byte before the next.
 //!
 //! **Risk:** this is not an official API and YouTube's terms do not allow
 //! playing its audio outside its own players. YouTube changes these clients
@@ -29,6 +34,8 @@ const MAX_BYTES: u64 = 120 << 20;
 
 struct Client {
     name: &'static str,
+    /// Names the client in the status line.
+    label: &'static str,
     id: &'static str,
     version: &'static str,
     agent: &'static str,
@@ -37,18 +44,20 @@ struct Client {
 
 const CLIENTS: &[Client] = &[
     Client {
-        name: "ANDROID_VR",
-        id: "28",
-        version: "1.65.10",
-        agent: "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
-        extra: || json!({ "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32, "osName": "Android", "osVersion": "12L" }),
-    },
-    Client {
         name: "IOS",
+        label: "iOS:",
         id: "5",
         version: "20.10.4",
         agent: "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)",
         extra: || json!({ "deviceMake": "Apple", "deviceModel": "iPhone16,2", "osName": "iPhone", "osVersion": "18.3.2.22D82" }),
+    },
+    Client {
+        name: "ANDROID_VR",
+        label: "VR:",
+        id: "28",
+        version: "1.65.10",
+        agent: "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+        extra: || json!({ "deviceMake": "Oculus", "deviceModel": "Quest 3", "androidSdkVersion": 32, "osName": "Android", "osVersion": "12L" }),
     },
 ];
 
@@ -91,10 +100,58 @@ pub fn pick_audio(v: &Value) -> std::result::Result<(String, String, u64), Strin
     best.map(|(_, u, m, b)| (u, m, b)).ok_or_else(|| "YouTube sent no audio this app can play".into())
 }
 
+/// A video's audio, whole. Each client is tried from lookup to the last
+/// byte before the next one, because YouTube sometimes hands one client a
+/// link it then refuses to serve.
+pub async fn fetch_audio(
+    http: &reqwest::Client,
+    video_id: &str,
+    cancel: &tokio_util::sync::CancellationToken,
+) -> Result<Vec<u8>> {
+    let mut errors = Vec::new();
+    for c in CLIENTS {
+        if cancel.is_cancelled() {
+            return Err(Error::Other("canceled".into()));
+        }
+        let got = match resolve_with(http, video_id, c).await {
+            Ok(stream) => download(http, &stream, cancel).await,
+            Err(e) => Err(e),
+        };
+        match got {
+            Ok(bytes) => return Ok(bytes),
+            Err(e) => {
+                log::warn!("song {video_id} via {}: {e}", c.name);
+                errors.push(format!("{} {}", c.label, short(&e)));
+            }
+        }
+    }
+    Err(Error::Other(errors.join("; ")))
+}
+
+/// An error in a few words for the player's status line.
+fn short(e: &Error) -> String {
+    match e {
+        Error::Http { status, .. } | Error::Unauthorized { status, .. } => format!("refused the audio (HTTP {status})"),
+        Error::Network(n) if n.is_timeout() => "timed out".into(),
+        Error::Network(_) => "could not be reached".into(),
+        other => other.to_string().chars().take(120).collect(),
+    }
+}
+
 /// Find the audio stream for a video, trying each client in turn.
 pub async fn resolve(http: &reqwest::Client, video_id: &str) -> Result<AudioStream> {
-    let mut last = String::from("YouTube did not answer");
+    let mut last = Error::Other("YouTube did not answer".into());
     for c in CLIENTS {
+        match resolve_with(http, video_id, c).await {
+            Ok(s) => return Ok(s),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
+async fn resolve_with(http: &reqwest::Client, video_id: &str, c: &Client) -> Result<AudioStream> {
+    {
         let mut client = json!({ "clientName": c.name, "clientVersion": c.version, "hl": "en", "gl": "US" });
         if let (Some(o), Some(extra)) = (client.as_object_mut(), (c.extra)().as_object()) {
             o.extend(extra.clone());
@@ -112,26 +169,16 @@ pub async fn resolve(http: &reqwest::Client, video_id: &str) -> Result<AudioStre
         let v: Value = match resp {
             Ok(r) if r.status().is_success() => match r.json().await {
                 Ok(v) => v,
-                Err(e) => {
-                    last = e.to_string();
-                    continue;
-                }
+                Err(e) => return Err(e.into()),
             },
-            Ok(r) => {
-                last = format!("YouTube answered {}", r.status().as_u16());
-                continue;
-            }
-            Err(e) => {
-                last = e.to_string();
-                continue;
-            }
+            Ok(r) => return Err(Error::Other(format!("lookup refused (HTTP {})", r.status().as_u16()))),
+            Err(e) => return Err(e.into()),
         };
         match pick_audio(&v) {
-            Ok((url, mime, bytes)) => return Ok(AudioStream { url, mime, bytes, agent: c.agent }),
-            Err(m) => last = m,
+            Ok((url, mime, bytes)) => Ok(AudioStream { url, mime, bytes, agent: c.agent }),
+            Err(m) => Err(Error::Other(m)),
         }
     }
-    Err(Error::Other(last))
 }
 
 /// Download a stream whole, in pieces. Stops early when `cancel` fires.
