@@ -1,0 +1,11 @@
+[package]
+name = "sylva-look"
+version.workspace = true
+edition.workspace = true
+description = "Sylva's look for native Rust apps: colors, type, icons and controls drawn with egui."
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "persistence", "wayland", "x11"] }
+image = { version = "0.25", default-features = false, features = ["png", "gif", "webp", "jpeg"] }
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "http2"] }
+tokio.workspace = true

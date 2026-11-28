@@ -8,25 +8,21 @@ Sylva Control used to be called Sylva Desktop, before that Cortex, and before th
 name on purpose: the `pine-core` crate, the `pine` Cargo package and the `pine.exe` it builds
 (older copies update themselves with `cargo build -p pine`), the app identifier
 `app.pine.desktop` (it is also the credential store service name and the app data folder, so
-saved sign-ins and settings keep working; Sylva Chat also reads the Twitch Client ID from it), and the MSI upgrade code
-(still the one Tauri made for "Cortex", so the `.msi` upgrades an old install in place). The
-Windows installer installs into a new "Sylva Control" folder, so its hook
-(`src-tauri/windows/installer-hooks.nsh`) runs the old Sylva Desktop or Cortex uninstaller silently afterwards. The repository is
+saved sign-ins keep working; Sylva Chat also reads the Twitch Client ID from it). The installed
+program is named "Sylva Control", as Tauri named it, so the native build replaces it in place.
+The repository is
 SylvaBot/sylva-control (it was haruxee/pine, then haruxee/cortex).
 
 ## Stack and why
 
 | Layer | Choice | Reason |
 | --- | --- | --- |
-| App shell | Tauri 2 (Rust) | Small native binary that uses the system webview (WebView2 on Windows). All networking, secrets and state live in Rust. |
-| UI | Plain HTML, CSS and JavaScript in `ui/` | No Node toolchain or bundler needed. The UI only renders and calls Rust commands. |
+| Window | egui (eframe, glow) | Native drawing, no webview: starts fast, small, and the same on every OS. Up to 0.7 it was Tauri with an HTML UI; 0.8.0 redraws the same design natively. |
+| Look | `crates/sylva-look` | Sylva's fonts (Geist), Phosphor icons, colors, buttons, fields, switches, toasts and the frameless title bar, shared with Sylva Chat's style. |
 | HTTP | reqwest with the OS TLS stack | Uses the Windows and macOS certificate stores, so corporate proxies and antivirus TLS work. |
 | Realtime | tokio-tungstenite | Sylva's live socket is a plain JSON websocket. |
 | Secrets | keyring | Tokens go in Windows Credential Manager, macOS Keychain or Linux Secret Service. Never in files. |
-
-egui or iced were considered. Tauri won because a feed of rich, variable length messages,
-avatars and badges is far easier to lay out well in HTML, and the Rust core stays GUI free
-and testable either way.
+| Installers and updates | cargo-packager and its updater | Same signed `latest.json` format Tauri used, so Tauri installs update to native builds. |
 
 ## Layout of the code
 
@@ -37,11 +33,13 @@ crates/pine-core/       Pure Rust library, no GUI code, unit tested
                             overlay reload, replay, and the live socket
   src/twitch.rs             Twitch device code sign-in and Helix lists
   src/public.rs             Viewer count without a Twitch sign-in (DecAPI)
-src-tauri/                  The desktop app
-  src/commands.rs           Commands the UI calls with invoke()
-  src/state.rs              Signed-in sessions, live task wiring
+crates/sylva-look/      Sylva's look for egui: theme, icons, widgets, title bar
+app/                    The desktop app (Cargo package `pine`)
+  src/app.rs                The window: pages, Settings, dialogs, timers
+  src/backend.rs            Signed-in sessions and every network call, answering with events
+  src/activity.rs           How each activity reads in the feed, filters and search
+  src/updater.rs            Release updates, and git checkout updates
   src/secrets.rs            OS credential store
-ui/                         index.html, styles.css, app.js
 ```
 
 ## Data sources
