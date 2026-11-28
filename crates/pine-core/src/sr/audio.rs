@@ -520,6 +520,28 @@ mod tests {
         assert!(out.chunks(2).zip(out.chunks(2).skip(1)).all(|(a, b)| b[0] >= a[0]));
     }
 
+    /// `SYLVA_SR_SAMPLE=path/to/song.m4a cargo test -p pine-core decodes_a_sample`
+    /// decodes a real YouTube download end to end and seeks in it.
+    #[test]
+    fn decodes_a_sample() {
+        let Ok(path) = std::env::var("SYLVA_SR_SAMPLE") else { return };
+        let mut s = open(std::fs::read(path).unwrap()).unwrap();
+        let mut frames = 0u64;
+        while let Ok(p) = s.format.next_packet() {
+            if p.track_id() != s.track {
+                continue;
+            }
+            if let Ok(d) = s.decoder.decode(&p) {
+                frames += d.frames() as u64;
+            }
+        }
+        let secs = frames / s.rate as u64;
+        eprintln!("decoded {secs} s at {} Hz, header says {} ms", s.rate, s.duration_ms);
+        assert!(secs > 30);
+        let to = SeekTo::Time { time: Time::new(60, 0.0), track_id: Some(s.track) };
+        assert!(s.format.seek(SeekMode::Coarse, to).is_ok());
+    }
+
     #[test]
     fn remixes_channels() {
         assert_eq!(remix(&[1.0, 3.0], 2, 1), vec![2.0]);

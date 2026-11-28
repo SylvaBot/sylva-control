@@ -376,8 +376,7 @@ fn spawn_fetch(
 ) {
     tokio::spawn(async move {
         let result = async {
-            let stream = resolve::resolve(&http, &video_id).await.map_err(|e| e.to_string())?;
-            resolve::download(&http, &stream, &cancel).await.map_err(|e| e.to_string())
+            resolve::fetch_audio(&http, &video_id, &cancel).await.map_err(|e| e.to_string())
         }
         .await;
         if !cancel.is_cancelled() {
