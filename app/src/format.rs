@@ -118,16 +118,6 @@ pub fn song_clock(ms: u64) -> String {
     }
 }
 
-pub fn greeting() -> &'static str {
-    use chrono::Timelike;
-    match Local::now().hour() {
-        0..=4 => "Good evening",
-        5..=11 => "Good morning",
-        12..=17 => "Good afternoon",
-        _ => "Good evening",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

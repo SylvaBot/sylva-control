@@ -19,7 +19,7 @@ use std::collections::HashSet;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use sylva_look::theme::{self, *};
-use sylva_look::widgets::{self as w, avatar, field, fmt, icon_button, line, para, skel, switch, tile, uv, Button, FieldOpts, Size, Toasts};
+use sylva_look::widgets::{self as w, field, fmt, icon_button, line, para, skel, switch, tile, uv, Button, FieldOpts, Size, Toasts};
 use sylva_look::{chrome, Icons, Images};
 
 const MAX_ITEMS: usize = 500;
@@ -33,7 +33,6 @@ const UPDATE_CHECK_S: f64 = 15.0 * 60.0;
 enum Page {
     Home,
     Activity,
-    Stream,
 }
 
 impl Page {
@@ -41,13 +40,11 @@ impl Page {
         match self {
             Page::Home => "home",
             Page::Activity => "activity",
-            Page::Stream => "stream",
         }
     }
     fn from_key(k: &str) -> Self {
         match k {
             "activity" => Page::Activity,
-            "stream" => Page::Stream,
             _ => Page::Home,
         }
     }
@@ -747,41 +744,6 @@ impl App {
         }
     }
 
-    fn sidebar(&mut self, ui: &mut egui::Ui, rect: Rect, icons_only: bool) {
-        let pad = if rect.width() <= 56.0 { 6.0 } else if icons_only { 10.0 } else { 12.0 };
-        let x0 = rect.left() + pad;
-        let w = rect.width() - 2.0 * pad;
-        let mut y = rect.top() + 4.0;
-        let items = [(Page::Home, "home", "Home"), (Page::Activity, "activity", "Activity"), (Page::Stream, "edit", "Stream info")];
-        for (page, icon, label) in items {
-            let r = Rect::from_min_size(pos2(x0, y), vec2(w, 36.0));
-            if self.side_item(ui, r, icon, label, self.page == page, icons_only).clicked() {
-                self.go(page);
-            }
-            y += 37.0;
-        }
-        // Foot: who is signed in, then Settings.
-        let set = Rect::from_min_size(pos2(x0, rect.bottom() - 14.0 - 36.0), vec2(w, 36.0));
-        if self.side_item(ui, set, "settings", "Settings", self.settings.is_some(), icons_only).clicked() {
-            self.settings = Some(Pane::Accounts);
-        }
-        if let Some(sy) = &self.auth.sylva {
-            let me = Rect::from_min_size(pos2(x0, set.top() - 6.0 - 44.0), vec2(w, 44.0));
-            let name = sy.name.clone().or(sy.login.clone()).unwrap_or_else(|| "Streamer".into());
-            let p = ui.painter();
-            let ax = if icons_only { me.center().x } else { me.left() + 6.0 + 16.0 };
-            avatar(p, &self.images, pos2(ax, me.center().y), 32.0, &name, sy.avatar.as_deref());
-            if !icons_only {
-                let tw = me.width() - 6.0 - 32.0 - 10.0 - 6.0;
-                let g1 = line(p, name, medium(13.5), TEXT, tw);
-                let g2 = line(p, if self.auth.twitch.is_some() { "Twitch connected" } else { "Twitch not connected" }, regular(12.0), FAINT, tw);
-                let tx = me.left() + 6.0 + 32.0 + 10.0;
-                p.galley(pos2(tx, me.center().y - 18.0), g1, TEXT);
-                p.galley(pos2(tx, me.center().y + 1.0), g2, TEXT);
-            }
-        }
-    }
-
     fn side_item(&self, ui: &mut egui::Ui, r: Rect, icon: &str, label: &str, on: bool, icons_only: bool) -> Response {
         let resp = ui.interact(r, Id::unique(("side", label)), Sense::click());
         let resp = if icons_only { resp.on_hover_text(label) } else { resp };
@@ -804,8 +766,6 @@ impl App {
         resp
     }
 
-    // ---------- Pages ----------
-
     fn main_panel(&mut self, ui: &mut egui::Ui, panel: Rect, full_w: f32) {
         let pad_x = if full_w <= 480.0 { 14.0 } else if full_w <= 860.0 { 22.0 } else { 36.0 };
         let pad_top = if full_w <= 480.0 { 18.0 } else if full_w <= 860.0 { 22.0 } else { 28.0 };
@@ -825,7 +785,6 @@ impl App {
                 y += match self.page {
                     Page::Home => self.home(ui, x, y, page_w, full_w, vis),
                     Page::Activity => self.activity_page(ui, x, y, page_w, vis),
-                    Page::Stream => self.stream_page(ui, x, y, page_w),
                 };
                 let bottom = if full_w <= 480.0 { 32.0 } else if full_w <= 860.0 { 40.0 } else { 48.0 };
                 self.content_h = y + bottom - origin.y;
@@ -887,13 +846,6 @@ impl App {
 
     fn home(&mut self, ui: &mut egui::Ui, x: f32, y0: f32, w: f32, full_w: f32, vis: Rect) -> f32 {
         let mut y = y0;
-        let name = self.auth.sylva.as_ref().map(|s| s.name.clone().or(s.login.clone()).unwrap_or_else(|| "Streamer".into()));
-        let title = match &name {
-            Some(n) => format!("{}, {n}", format::greeting()),
-            None => "Welcome back".into(),
-        };
-        y += self.page_head(ui, x, y, w, "/home", &title, "Here's your channel right now.", full_w <= 480.0, None).0;
-
         if self.prefs.adbar {
             y += self.adbar(ui, x, y, w);
         }
@@ -906,6 +858,8 @@ impl App {
             y += self.sect_head(ui, x, y, w, "Quick actions", "", 0.0);
             y += self.quick_actions(ui, x, y, w, full_w);
         }
+        y += 24.0;
+        y += self.stream_page(ui, x, y, w);
         if self.sr.is_some() {
             y += 28.0;
             y += self.song_requests(ui, x, y, w);
@@ -1072,87 +1026,72 @@ impl App {
     }
 
     fn totals(&mut self, ui: &mut egui::Ui, x: f32, y: f32, w: f32, full_w: f32) -> f32 {
-        let narrow = full_w <= 640.0;
         let small = full_w <= 480.0;
-        let gap = 12.0;
-        let h = if small { 100.0 } else { 112.0 };
+        let gap = 8.0;
+        let h = 68.0;
         let cards: [(&str, Option<String>, String, bool, String); 3] = [
             ("Viewers", self.viewers.loaded.then(|| self.viewers.count.clone()), self.viewers.foot.clone(), self.viewers.live, self.viewers.detail.clone()),
-            ("Followers", self.followers.clone(), "All time".into(), false, String::new()),
-            ("Subscribers", self.subs.clone(), "Active now".into(), false, String::new()),
+            ("Followers", self.followers.clone(), String::new(), false, String::new()),
+            ("Subscribers", self.subs.clone(), String::new(), false, String::new()),
         ];
-        let col_w = if narrow { (w - gap) / 2.0 } else { (w - 2.0 * gap) / 3.0 };
-        let mut rects = Vec::new();
-        if narrow {
-            rects.push(Rect::from_min_size(pos2(x, y), vec2(w, h)));
-            rects.push(Rect::from_min_size(pos2(x, y + h + gap), vec2(col_w, h)));
-            rects.push(Rect::from_min_size(pos2(x + col_w + gap, y + h + gap), vec2(col_w, h)));
-        } else {
-            for i in 0..3 {
-                rects.push(Rect::from_min_size(pos2(x + i as f32 * (col_w + gap), y), vec2(col_w, h)));
-            }
-        }
+        let col_w = (w - 2.0 * gap) / 3.0;
         let p = ui.painter().clone();
-        let pad = if small { 14.0 } else { 18.0 };
+        let pad = if small { 12.0 } else { 16.0 };
         for (i, (label, value, foot, live, detail)) in cards.into_iter().enumerate() {
-            let r = rects[i];
+            let r = Rect::from_min_size(pos2(x + i as f32 * (col_w + gap), y), vec2(col_w, h));
             p.rect_filled(r, R_ITEM, SURFACE);
             let ix = r.left() + pad;
             let iw = r.width() - 2.0 * pad;
-            let top = r.top() + if small { 14.0 } else { 16.0 };
-            p.galley(pos2(ix, top), line(&p, label, regular(13.0), MUTED, iw), TEXT);
-            let ny = top + 18.0 + 6.0;
+            let top = r.top() + 12.0;
+            // The state (Live now, Offline) sits on the label row, right-aligned.
+            let foot_g = (!foot.is_empty() && (i != 0 || self.viewers.loaded)).then(|| p.layout_no_wrap(foot, regular(12.5), if live { SAGE.gamma_multiply(breath(ui, 2.2)) } else { FAINT }));
+            let fw = foot_g.as_ref().map_or(0.0, |g| g.size().x + 8.0);
+            p.galley(pos2(ix, top), line(&p, label, regular(13.0), MUTED, (iw - fw).max(24.0)), TEXT);
+            if let Some(g) = foot_g {
+                let gp = pos2(ix + iw - g.size().x, top + 1.0);
+                let gr = Rect::from_min_size(gp, g.size());
+                p.galley(gp, g, TEXT);
+                if !detail.is_empty() {
+                    ui.interact(gr, Id::unique("viewer-detail"), Sense::hover()).on_hover_text(detail);
+                }
+            }
+            let ny = top + 18.0 + 2.0;
             match value {
                 Some(v) => {
-                    let g = line(&p, v, medium(if small { 24.0 } else { 28.0 }), TEXT, iw);
-                    p.galley(pos2(ix, ny + (34.0 - g.size().y) / 2.0), g, TEXT);
+                    let g = line(&p, v, medium(if small { 22.0 } else { 26.0 }), TEXT, iw);
+                    p.galley(pos2(ix, ny + (30.0 - g.size().y) / 2.0), g, TEXT);
                 }
-                None => skel(ui, Rect::from_min_size(pos2(ix, ny + 4.0), vec2(if i == 1 { 96.0 } else { 72.0 }, 26.0))),
-            }
-            let fy = ny + 34.0 + 4.0;
-            if i == 0 && !self.viewers.loaded {
-                skel(ui, Rect::from_min_size(pos2(ix, fy + 3.5), vec2(60.0, 11.0)));
-            } else {
-                let color = if live { SAGE.gamma_multiply(breath(ui, 2.2)) } else { FAINT };
-                let g = line(&p, foot, regular(12.5), color, iw);
-                p.galley(pos2(ix, fy), g, TEXT);
-                if !detail.is_empty() {
-                    ui.interact(Rect::from_min_size(pos2(ix, fy), vec2(iw, 18.0)), Id::unique("viewer-detail"), Sense::hover()).on_hover_text(detail);
-                }
+                None => skel(ui, Rect::from_min_size(pos2(ix, ny + 4.0), vec2(if i == 1 { 80.0 } else { 56.0 }, 22.0))),
             }
         }
-        if narrow {
-            2.0 * h + gap
-        } else {
-            h
-        }
+        h
     }
 
     fn quick_actions(&mut self, ui: &mut egui::Ui, x: f32, y: f32, w: f32, full_w: f32) -> f32 {
-        let one_col = full_w <= 640.0;
-        let gap = 12.0;
-        let h = 64.0;
-        let col_w = if one_col { w } else { (w - gap) / 2.0 };
+        let cols = if full_w <= 480.0 { 1 } else if full_w <= 760.0 { 2 } else { 4 };
+        let gap = 8.0;
+        let h = 44.0;
+        let col_w = (w - (cols - 1) as f32 * gap) / cols as f32;
         let acts = [
-            ("mute", self.muted, if self.muted { ("Unmute alerts", "Alerts are muted", "volx") } else { ("Mute alerts", "Alerts play with sound", "vol") }),
-            ("pause", self.paused, if self.paused { ("Resume alerts", "Alerts wait in line", "play") } else { ("Pause alerts", "Alerts play as they come", "pause") }),
-            ("skip", false, ("Skip alert", "End the one on screen", "skip")),
-            ("reload", false, ("Reload overlays", "Refresh every OBS source", "layers")),
+            ("mute", self.muted, if self.muted { ("Unmute alerts", "volx") } else { ("Mute alerts", "vol") }),
+            ("pause", self.paused, if self.paused { ("Resume alerts", "play") } else { ("Pause alerts", "pause") }),
+            ("skip", false, ("Skip alert", "skip")),
+            ("reload", false, ("Reload overlays", "layers")),
         ];
         let p = ui.painter().clone();
-        for (i, (key, on, (t1, t2, icon))) in acts.into_iter().enumerate() {
-            let (cx, cy) = if one_col { (x, y + i as f32 * (h + gap)) } else { (x + (i % 2) as f32 * (col_w + gap), y + (i / 2) as f32 * (h + gap)) };
+        for (i, (key, on, (t1, icon))) in acts.into_iter().enumerate() {
+            let (cx, cy) = (x + (i % cols) as f32 * (col_w + gap), y + (i / cols) as f32 * (h + gap));
             let r = Rect::from_min_size(pos2(cx, cy), vec2(col_w, h));
             let busy = self.busy.contains(&format!("qa:{key}"));
             let resp = ui.interact(r, Id::unique(("qa", key)), if busy { Sense::hover() } else { Sense::click() });
             let dim = if busy { 0.45 } else { 1.0 };
             p.rect_filled(r, R_ITEM, if resp.hovered() && !busy { ROW_HOVER } else { SURFACE });
-            let tr = Rect::from_min_size(pos2(r.left() + 16.0, r.center().y - 16.0), vec2(32.0, 32.0));
+            let tr = Rect::from_min_size(pos2(r.left() + 10.0, r.center().y - 14.0), vec2(28.0, 28.0));
             let t = ui.ctx().animate_bool_with_time(Id::unique(("qa-on", key)), on, 0.15);
             tile(&p, &self.icons, tr, icon, w::lerp(TILE, SAGE, t).gamma_multiply(dim), w::lerp(TILE_INK, ON_SAGE, t).gamma_multiply(dim));
-            let tw = r.width() - 16.0 - 32.0 - 14.0 - 16.0;
-            p.galley(pos2(tr.right() + 14.0, r.center().y - 20.0), line(&p, t1, medium(14.0), TEXT.gamma_multiply(dim), tw), TEXT);
-            p.galley(pos2(tr.right() + 14.0, r.center().y + 2.0), line(&p, t2, regular(12.5), FAINT.gamma_multiply(dim), tw), TEXT);
+            let tw = r.width() - 10.0 - 28.0 - 10.0 - 12.0;
+            let g = line(&p, t1, medium(13.5), TEXT.gamma_multiply(dim), tw);
+            p.galley(pos2(tr.right() + 10.0, r.center().y - g.size().y / 2.0), g, TEXT);
             if resp.hovered() {
                 ui.ctx().set_cursor_icon(if busy { CursorIcon::Progress } else { CursorIcon::PointingHand });
             }
@@ -1171,11 +1110,8 @@ impl App {
                 self.run(b.alert_action(k, action, ok));
             }
         }
-        if one_col {
-            4.0 * h + 3.0 * gap
-        } else {
-            2.0 * h + gap
-        }
+        let rows = 4_usize.div_ceil(cols);
+        rows as f32 * h + (rows - 1) as f32 * gap
     }
 
     /// Song requests: one compact row (what plays, play or pause, skip, the queue button), the
@@ -1373,7 +1309,7 @@ impl App {
             return h;
         }
         let idx: Vec<usize> = match &scope {
-            FeedScope::Recent => (0..self.feed.len().min(RECENT)).collect(),
+            FeedScope::Recent => (0..self.feed.len()).filter(|&i| !activity::hidden(&self.feed[i].a)).take(RECENT).collect(),
             FeedScope::Day(v) => v.clone(),
         };
         if idx.is_empty() {
@@ -1435,6 +1371,12 @@ impl App {
 
     fn activity_page(&mut self, ui: &mut egui::Ui, x: f32, y0: f32, w: f32, vis: Rect) -> f32 {
         let mut y = y0;
+        let back = Button::new("Back").ghost().sm();
+        let bs = back.measure(ui);
+        if back.show_at(ui, &self.icons, Rect::from_min_size(pos2(x, y), bs), Id::unique("act-back")).clicked() {
+            self.go(Page::Home);
+        }
+        y += bs.y + 12.0;
         let btn = Button::new("Refresh").icon("refresh").spin(self.feed_loading).enabled(!self.feed_loading);
         let (h, refresh) = self.page_head(ui, x, y, w, "/activity", "Activity", "Everything that happened on your channel, newest first.", w < 452.0, Some(btn));
         if refresh {
@@ -1506,7 +1448,7 @@ impl App {
 
     fn stream_page(&mut self, ui: &mut egui::Ui, x: f32, y0: f32, w: f32) -> f32 {
         let mut y = y0;
-        y += self.page_head(ui, x, y, w, "/stream", "Stream info", "Change your title and category on Twitch without opening the browser.", w < 452.0, None).0;
+        y += self.sect_head(ui, x, y, w, "Stream info", "", 0.0);
         let p = ui.painter().clone();
         if self.auth.twitch.is_none() {
             let btn = Button::new("Connect Twitch").primary();
@@ -2281,11 +2223,8 @@ impl eframe::App for App {
             let panel = Rect::from_min_max(pos2(body.left() + 8.0, body.top()), pos2(body.right() - 8.0, body.bottom() - 8.0));
             self.welcome(ui, panel);
         } else {
-            let side_w = if fw <= 480.0 { 56.0 } else if fw <= 860.0 { 64.0 } else { 220.0 };
-            let side = Rect::from_min_size(body.min, vec2(side_w, body.height()));
-            let panel = Rect::from_min_max(pos2(side.right(), body.top()), body.max);
-            ui.painter().rect_filled(panel, CornerRadius { nw: R_PANEL, ..Default::default() }, BG);
-            self.sidebar(ui, side, fw <= 860.0);
+            let panel = Rect::from_min_max(pos2(body.left() + 8.0, body.top()), body.max);
+            ui.painter().rect_filled(panel, CornerRadius { nw: R_PANEL, ne: R_PANEL, ..Default::default() }, BG);
             self.main_panel(ui, panel, fw);
         }
         self.settings_modal(&ctx);

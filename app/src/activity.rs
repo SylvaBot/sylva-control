@@ -279,7 +279,15 @@ fn other_words(a: &Activity) -> Desc {
 }
 
 /// Whether an activity passes the Activity page's chip and search box.
+/// Events the feed leaves out: the stream starting or ending, and ad breaks.
+pub fn hidden(a: &Activity) -> bool {
+    matches!(a.raw_type.as_str(), "stream.online" | "stream.offline" | "channel.ad_break.begin" | "channel.ad_break.end")
+}
+
 pub fn matches(a: &Activity, show: &str, query: &str) -> bool {
+    if hidden(a) {
+        return false;
+    }
     if show != "all" && group_of(a.kind).id != show {
         return false;
     }
