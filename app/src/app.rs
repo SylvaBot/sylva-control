@@ -389,6 +389,7 @@ impl App {
                         }
                     }
                     let wait = match self.viewer_source {
+                        ViewerSource::Site => 3.0,
                         ViewerSource::Twitch => 5.0,
                         ViewerSource::Public => 10.0,
                         ViewerSource::None => 30.0,

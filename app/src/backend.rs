@@ -4,7 +4,7 @@
 //! This is the same work the Tauri commands did before Sylva Control became a native app.
 
 use crate::secrets;
-use pine_core::public::PublicViewers;
+use pine_core::public::{PublicViewers, SiteViewers};
 use pine_core::sr::{self, Input, PlayerHandle, PlayerState, SongControl};
 use pine_core::sylva::{self, AlertState, LiveEvent, LiveStatus, SylvaChannel, SylvaClient};
 use pine_core::twitch::{self, AdSchedule, Category, ChannelInfo, DeviceCode, TwitchClient, TwitchTokens};
@@ -48,6 +48,8 @@ pub struct AuthState {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum ViewerSource {
+    /// The feed twitch.tv itself reads. Fastest, unofficial.
+    Site,
     Twitch,
     Public,
     None,
@@ -112,6 +114,7 @@ pub struct Backend {
     twitch: RwLock<Option<Arc<TwitchClient>>>,
     twitch_login: Mutex<Option<CancellationToken>>,
     public_viewers: std::sync::OnceLock<PublicViewers>,
+    site_viewers: std::sync::OnceLock<SiteViewers>,
 }
 
 impl Backend {
@@ -123,6 +126,7 @@ impl Backend {
             twitch: RwLock::new(None),
             twitch_login: Mutex::new(None),
             public_viewers: std::sync::OnceLock::new(),
+            site_viewers: std::sync::OnceLock::new(),
         })
     }
 
@@ -299,6 +303,26 @@ impl Backend {
     }
 
     async fn viewers_inner(&self) -> Result<Viewers, String> {
+        // Try the feed twitch.tv reads first: it is fresher than Helix and DecAPI. It is not an
+        // official API, so any failure quietly falls through to the official paths below.
+        let channel = match self.twitch.read().await.clone() {
+            Some(c) => Some(c.tokens().await.login),
+            None => match self.sylva.read().await.as_ref() {
+                Some(s) if s.channel.key.starts_with("twitch:") => s.channel.login.clone(),
+                _ => None,
+            },
+        };
+        if let Some(login) = channel {
+            let site = match self.site_viewers.get() {
+                Some(p) => Some(p.clone()),
+                None => SiteViewers::new().ok().map(|p| self.site_viewers.get_or_init(|| p).clone()),
+            };
+            if let Some(site) = site {
+                if let Ok(count) = site.viewer_count(&login).await {
+                    return Ok(Viewers { source: ViewerSource::Site, live: count.is_some(), viewers: count });
+                }
+            }
+        }
         if let Some(client) = self.twitch.read().await.clone() {
             let count = client.viewer_count().await.map_err(twitch_err)?;
             return Ok(Viewers { source: ViewerSource::Twitch, live: count.is_some(), viewers: count });
