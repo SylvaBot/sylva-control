@@ -40,6 +40,59 @@ impl PublicViewers {
     }
 }
 
+/// The viewer count straight from the feed twitch.tv itself reads. It is not an official API, so
+/// callers must fall back to the Helix or DecAPI paths when it fails.
+#[derive(Clone)]
+pub struct SiteViewers {
+    http: reqwest::Client,
+    url: String,
+}
+
+/// The public web client id twitch.tv uses for its own pages.
+const SITE_CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko";
+const SITE_URL: &str = "https://gql.twitch.tv/gql";
+
+impl SiteViewers {
+    pub fn new() -> Result<Self> {
+        Self::with_url(SITE_URL)
+    }
+
+    pub fn with_url(url: &str) -> Result<Self> {
+        let http = reqwest::Client::builder()
+            .user_agent(concat!("Pine/", env!("CARGO_PKG_VERSION")))
+            .timeout(Duration::from_secs(5))
+            .build()?;
+        Ok(Self { http, url: url.into() })
+    }
+
+    /// `Ok(Some(n))` while live, `Ok(None)` when offline.
+    pub async fn viewer_count(&self, login: &str) -> Result<Option<u64>> {
+        let login = login.trim().to_ascii_lowercase();
+        if login.is_empty() || !login.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return Err(Error::Other(format!("\"{login}\" is not a Twitch channel name")));
+        }
+        let body = serde_json::json!({
+            "query": format!("query {{ user(login: \"{login}\") {{ stream {{ viewersCount }} }} }}")
+        });
+        let resp = self.http.post(&self.url).header("Client-ID", SITE_CLIENT_ID).json(&body).send().await?;
+        let resp = check(resp).await?;
+        parse_site(&resp.text().await?)
+    }
+}
+
+pub(crate) fn parse_site(body: &str) -> Result<Option<u64>> {
+    let v: serde_json::Value = serde_json::from_str(body).map_err(|e| Error::Other(format!("bad site answer: {e}")))?;
+    let user = v.pointer("/data/user").ok_or_else(|| Error::Other("site feed gave no user".into()))?;
+    if user.is_null() {
+        return Err(Error::Other("site feed does not know this channel".into()));
+    }
+    match user.pointer("/stream") {
+        Some(s) if s.is_null() => Ok(None),
+        Some(s) => s.get("viewersCount").and_then(serde_json::Value::as_u64).map(Some).ok_or_else(|| Error::Other("site feed gave no count".into())),
+        None => Err(Error::Other("site feed gave no stream field".into())),
+    }
+}
+
 pub(crate) fn parse(body: &str) -> Result<Option<u64>> {
     let text = body.trim();
     if let Ok(n) = text.replace(',', "").parse::<u64>() {
@@ -64,6 +117,15 @@ mod tests {
         assert_eq!(parse("haruxee is offline").unwrap(), None);
         assert!(parse("User not found: nobody").is_err());
         assert!(parse("").is_err());
+    }
+
+    #[test]
+    fn parses_site_answers() {
+        assert_eq!(parse_site(r#"{"data":{"user":{"stream":{"viewersCount":42}}}}"#).unwrap(), Some(42));
+        assert_eq!(parse_site(r#"{"data":{"user":{"stream":null}}}"#).unwrap(), None);
+        assert!(parse_site(r#"{"data":{"user":null}}"#).is_err());
+        assert!(parse_site(r#"{"errors":[{"message":"x"}]}"#).is_err());
+        assert!(parse_site("nope").is_err());
     }
 
     #[tokio::test]
