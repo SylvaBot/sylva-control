@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["crates/pine-core", "src-tauri"]
+members = ["crates/pine-core", "crates/sylva-look", "app"]
 
 [workspace.package]
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 
 [workspace.dependencies]

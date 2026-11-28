@@ -2,7 +2,7 @@
 
 <img src="assets/logo.svg" alt="Sylva Control logo" width="96" />
 
-A desktop control room for Sylva streamers, written in Rust. Sylva Control is
+A desktop control room for Sylva streamers, written in Rust, with a native window (no webview). Sylva Control is
 the desktop app in the Sylva family. It used to be called Sylva Desktop, before that Cortex, and before that Pine.
 
 * **Live numbers:** current viewers in large type (no Twitch sign-in needed), with followers
@@ -35,15 +35,15 @@ Download the latest installer from the
 * **Windows:** `Sylva-Control_<version>_x64-setup.exe`. Run it; no admin rights needed. Sylva Control then
   appears in the Start menu and can be pinned to the taskbar. The installer is not code signed
   yet, so Windows SmartScreen may say it is from an unknown publisher: click **More info**, then
-  **Run anyway**. An `.msi` is there too if you prefer it.
+  **Run anyway**.
 * **macOS:** the `.dmg` (Apple Silicon `aarch64`, Intel `x64`). It is not notarized yet, so the
   first time, right click Sylva Control in Applications and choose **Open**.
-* **Linux:** the `.AppImage`, `.deb` or `.rpm`.
+* **Linux:** the `.AppImage` or `.deb`.
 
 Installed copies update themselves: Sylva Control checks the latest GitHub Release at start and
 every 15 minutes, and an **Update** button appears at the top when there is a new version. Click
 it and Sylva Control downloads, installs and restarts. On Linux this works for the AppImage;
-`.deb` and `.rpm` installs update through a new download. Your sign-ins are kept.
+`.deb` installs update through a new download. Your sign-ins are kept.
 
 **Coming from Sylva Desktop or Cortex?** It updates itself to Sylva Control like any other update.
 0.6.0 is the bridge: it is signed with the old update key, which older copies trust, and it trusts
@@ -51,38 +51,42 @@ the new key that signs 0.6.1 and later. On Windows the update removes the old Sy
 Cortex copy and its shortcuts, so pin Sylva Control to the taskbar again. Sign-ins and settings
 carry over.
 
+**0.8.0 is the native rewrite.** Earlier versions were built with Tauri and drew their window
+in a webview. 0.8.0 draws it natively with egui and looks the same. Tauri copies update to it
+like any other update, and sign-ins and the Twitch Client ID carry over. The Display settings
+(ad countdown, quick actions, compact rows) and the Activity filter start from their defaults
+once, since the old ones lived in the webview's storage.
+
 ## Release a new version
 
-Bump `version` in `Cargo.toml` and `src-tauri/tauri.conf.json`, then push a tag such as
-`v0.3.0`. The **Release** workflow builds the installers for Windows, macOS and Linux and
-publishes them as a GitHub Release. You can also start it by hand from the Actions tab.
+Bump `version` in the root `Cargo.toml`, then push a tag such as `v0.8.1`. The **Release**
+workflow builds the installers for Windows, macOS and Linux with
+[cargo-packager](https://github.com/crabnebula-dev/cargo-packager) and publishes them as a
+GitHub Release. You can also start it by hand from the Actions tab.
 
 The release also publishes `latest.json`, which installed copies read to update themselves.
-Update files are signed: the SylvaBot organization secret `TAURI_SIGNING_PRIVATE_KEY` holds the private
-key (no password), and its public key is `plugins.updater.pubkey` in `tauri.conf.json`. Keep
-the private key safe: losing it means installed copies can no longer update themselves, and
-anyone holding it could sign an update.
+Update files are signed: the SylvaBot organization secret `TAURI_SIGNING_PRIVATE_KEY` holds the
+private key (no password), and its public key is `UPDATE_PUBKEY` in `app/src/updater.rs`. Keep the
+private key safe: losing it means installed copies can no longer update themselves, and anyone
+holding it could sign an update.
 
 ## Run from source
 
-1. Install Rust from https://rustup.rs and the Tauri prerequisites for your OS from
-   https://v2.tauri.app/start/prerequisites/ (on Windows: Microsoft C++ Build Tools and
-   WebView2, which Windows 10 and 11 already include).
+1. Install Rust from https://rustup.rs. On Linux also install
+   `libxkbcommon-dev libgl1-mesa-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev
+   libxi-dev libssl-dev libdbus-1-dev libasound2-dev pkg-config`.
 2. Start the app (the Cargo package is still called `pine`):
 
    ```
    cargo run -p pine
    ```
 
-3. To build an installer, install the Tauri CLI once and build:
+   `SYLVA_CONTROL_DEMO=1 cargo run -p pine` opens it with sample data and no sign-in, for
+   looking at the layout.
 
-   ```
-   cargo install tauri-cli --version "^2" --locked
-   cd src-tauri
-   cargo tauri build
-   ```
-
-   The installers land in `target/release/bundle/`.
+3. To build an installer: `cargo install cargo-packager --locked`, build with
+   `cargo build --release -p pine`, copy `target/release/pine` to `target/release/Sylva Control`
+   (`.exe` on Windows), then run `cargo packager -p pine --release`. Installers land in `dist/`.
 
 ## Updates
 
@@ -122,7 +126,8 @@ cargo test --workspace      # Sylva event mapping, Twitch auth, viewer count
 cargo clippy --workspace --all-targets
 ```
 
-The UI is static files in `ui/`, embedded at build time. Edit and re-run.
+The window is drawn in `app/src/app.rs` with egui. Shared pieces of Sylva's look (fonts, icons,
+buttons, fields, the title bar) live in `crates/sylva-look`.
 
 ## Known limits
 

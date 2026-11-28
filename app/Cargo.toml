@@ -1,0 +1,45 @@
+[package]
+# Still named `pine` (the app's first name): copies that run from a git checkout update
+# themselves with `cargo build -p pine` and then start the `pine` program.
+name = "pine"
+version.workspace = true
+edition.workspace = true
+description = "Sylva Control: a desktop control room for Sylva streamers."
+
+[dependencies]
+pine-core = { path = "../crates/pine-core" }
+sylva-look = { path = "../crates/sylva-look" }
+eframe = { version = "0.37", default-features = false, features = ["glow", "default_fonts", "persistence", "wayland", "x11"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+log.workspace = true
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+open = "5"
+cargo-packager-updater = "0.2"
+semver = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+raw-window-handle = "0.6"
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[package.metadata.packager]
+product-name = "Sylva Control"
+identifier = "app.pine.desktop"
+publisher = "Sylva"
+category = "Utility"
+copyright = "Copyright 2026 Sylva"
+description = "A desktop control room for streamers."
+long-description = "Sylva Control shows your live viewers, alerts and channel activity, and lets you control alerts, overlays, song requests and your stream title from one window."
+out-dir = "../dist"
+icons = ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+binaries = [{ path = "Sylva Control", main = true }]
+
+[package.metadata.packager.nsis]
+installer-mode = "currentUser"
