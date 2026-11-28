@@ -45,11 +45,11 @@ every 15 minutes, and an **Update** button appears at the top when there is a ne
 it and Sylva Control downloads, installs and restarts. On Linux this works for the AppImage;
 `.deb` and `.rpm` installs update through a new download. Your sign-ins are kept.
 
-**Coming from Sylva Desktop or Cortex (0.5.x or older)?** Updates are signed with a new key from
-0.6.0 on, so older copies cannot update themselves to it. Download and run the 0.6.0 installer
-once. On Windows it removes the old Sylva Desktop or Cortex copy and its shortcuts, so pin Sylva
-Control to the taskbar again. Sign-ins and settings carry over. After that, updates are automatic
-again.
+**Coming from Sylva Desktop or Cortex?** It updates itself to Sylva Control like any other update.
+0.6.0 is the bridge: it is signed with the old update key, which older copies trust, and it trusts
+the new key that signs 0.6.1 and later. On Windows the update removes the old Sylva Desktop or
+Cortex copy and its shortcuts, so pin Sylva Control to the taskbar again. Sign-ins and settings
+carry over.
 
 ## Release a new version
 
@@ -58,7 +58,7 @@ Bump `version` in `Cargo.toml` and `src-tauri/tauri.conf.json`, then push a tag 
 publishes them as a GitHub Release. You can also start it by hand from the Actions tab.
 
 The release also publishes `latest.json`, which installed copies read to update themselves.
-Update files are signed: the repository secret `TAURI_SIGNING_PRIVATE_KEY` holds the private
+Update files are signed: the SylvaBot organization secret `TAURI_SIGNING_PRIVATE_KEY` holds the private
 key (no password), and its public key is `plugins.updater.pubkey` in `tauri.conf.json`. Keep
 the private key safe: losing it means installed copies can no longer update themselves, and
 anyone holding it could sign an update.
