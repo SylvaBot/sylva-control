@@ -15,13 +15,14 @@ the desktop app in the Sylva family. It used to be called Sylva Desktop, before 
 * **Ad breaks:** a bar at the top shows when Twitch's next ad break runs, turns amber with a
   countdown in the last five minutes, and red with the time left while ads are running. Needs
   Twitch connected; if you connected before this was added, click **Reconnect Twitch** once.
-* **Song requests:** viewers ask for songs in chat with `!sr` and a YouTube link or a song name.
-  A small player on Home, above Recent activity, plays only the audio, right inside the app:
-  play, pause, skip, seek, volume, the queue (play next, remove) and a switch to take requests
-  or not. Songs play one after another on their own, and Sylva's Song requests page shows and
-  controls the same player. The rules (who can request, limits) are on that page. Songs come
-  from YouTube's app API, which is unofficial: YouTube can change it and break lookups until
-  Sylva Control is updated, and its terms do not allow playing its audio outside its own apps.
+* **Song requests:** viewers ask for songs in chat with `!sr` and a song name, a Spotify link
+  or a YouTube link (searched on Spotify by its title). Songs play in your own Spotify app
+  through Spotify's official Web API, so Spotify Premium is needed and Spotify must be open.
+  Connect Spotify once on Sylva's Song requests page. A small player on Home, above Recent
+  activity, controls it: play, pause, skip, seek, volume, the queue (play next, remove) and a
+  switch to take requests or not. Songs play one after another on their own, and Sylva's Song
+  requests page shows and controls the same player. Nothing is sent to Spotify until you press
+  play, and if you put on something else in Spotify the player steps back until you press play.
 * **Stream info:** change your Twitch title and category (with category search). The fields
   follow what is live on Twitch, refreshed every 30 seconds. Needs Twitch connected once.
 

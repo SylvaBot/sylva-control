@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct Song {
     pub id: u64,
+    /// The Spotify track id. Empty on songs queued from YouTube before Spotify.
+    #[serde(default)]
+    pub track: String,
+    #[serde(default)]
     pub video_id: String,
     pub title: String,
     #[serde(default)]
@@ -104,7 +108,7 @@ impl Queue {
         self.view.current.as_ref()
     }
 
-    /// The song after this one, to fetch ahead so it starts without a gap.
+    /// The song after this one.
     pub fn up_next(&self) -> Option<&Song> {
         self.view.queue.first()
     }
@@ -127,7 +131,7 @@ mod tests {
     use super::*;
 
     fn song(id: u64) -> Song {
-        Song { id, video_id: format!("v{id:010}"), title: format!("S{id}"), author: String::new(), duration_s: 100, by: "a".into() }
+        Song { id, track: String::new(), video_id: format!("v{id:010}"), title: format!("S{id}"), author: String::new(), duration_s: 100, by: "a".into() }
     }
 
     #[test]
