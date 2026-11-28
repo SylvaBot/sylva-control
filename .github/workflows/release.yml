@@ -70,7 +70,14 @@ jobs:
           # copies run from a git checkout still build; installs get the name Tauri gave them.
           mkdir -p target/release
           ext=""; [ "$RUNNER_OS" = Windows ] && ext=.exe
-          cp "target/${{ matrix.target }}/release/pine$ext" "target/release/Sylva Control$ext"
+          name="Sylva Control"
+          if [ "$RUNNER_OS" = Linux ]; then
+            # cargo-packager's AppImage step cannot find a binary whose name has a space, and
+            # Linux installs never had Tauri's name to keep, so use a plain one there.
+            name=sylva-control
+            sed -i 's/path = "Sylva Control"/path = "sylva-control"/' app/Cargo.toml
+          fi
+          cp "target/${{ matrix.target }}/release/pine$ext" "target/release/$name$ext"
       - name: Package
         shell: bash
         run: cargo packager -p pine --release --formats ${{ matrix.formats }}
