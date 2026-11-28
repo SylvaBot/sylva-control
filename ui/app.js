@@ -243,6 +243,9 @@ function applyAuth(a) {
   const sy = a.sylva;
   $("signin").hidden = !!sy;
   document.body.classList.toggle("signed-out", !sy);
+  // Song requests show once Sylva is signed in (the player runs with it).
+  if (!sy) renderSr(null);
+  else if (!before || before !== sy.key) loadSr();
   const name = sy ? sy.name || sy.login || "Streamer" : "";
   $("me-name").textContent = name;
   $("me-sub").textContent = a.twitch ? "Twitch connected" : "Twitch not connected";
@@ -1487,3 +1490,124 @@ async function start() {
 }
 
 start();
+
+// ---------- song requests ----------
+// The player lives in Rust (pine_core::sr); this only draws its state and
+// sends presses. State arrives as `sr` events a few times a second.
+
+let sr = null;
+let srSeeking = false;
+
+function srClock(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, r = s % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0");
+}
+
+async function srQueue(action, extra = {}) {
+  try {
+    await invoke("sr_queue", { action, ...extra });
+  } catch (x) {
+    toast(String(x), true);
+  }
+}
+
+function renderSr(s) {
+  sr = s;
+  $("sec-sr").hidden = !s;
+  if (!s) return;
+  const v = s.view || {};
+  const cur = v.current;
+  const on = !!(v.settings && v.settings.enabled);
+  $("sr-enabled").setAttribute("aria-checked", String(on));
+  $("sr-on-label").textContent = on ? "Taking requests" : "Requests off";
+  $("sr-title-text").textContent = cur ? cur.title : "Nothing playing";
+  let sub;
+  if (s.status) sub = s.status;
+  else if (!cur) sub = on ? "Viewers add songs with !sr" : "Turn requests on to take !sr in chat";
+  else if (s.loading) sub = "Loading · asked by " + cur.by;
+  else sub = srClock(s.positionMs) + " / " + srClock(s.durationMs || cur.durationS * 1000) + " · asked by " + cur.by;
+  $("sr-sub").textContent = sub;
+
+  const play = $("sr-play");
+  play.disabled = !cur;
+  play.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+  play.querySelector("use").setAttribute("href", s.playing ? "#i-pause" : "#i-play");
+  $("sr-skip").disabled = !cur;
+
+  const seek = $("sr-seek");
+  const total = s.durationMs || (cur ? cur.durationS * 1000 : 0);
+  seek.disabled = !s.loaded || !total;
+  if (!srSeeking) {
+    seek.max = String(Math.max(1, total));
+    seek.value = String(Math.min(s.positionMs, total));
+    seek.style.setProperty("--p", (total ? Math.min(100, (s.positionMs / total) * 100) : 0) + "%");
+  }
+  if (document.activeElement !== $("sr-volume")) {
+    $("sr-volume").value = String(s.volume);
+    $("sr-volume-val").textContent = s.volume + "%";
+  }
+
+  const q = v.queue || [];
+  $("sr-count").textContent = String(q.length);
+  const list = $("sr-list");
+  const key = q.map((x) => x.id).join(",");
+  if (list.dataset.key === key) return;
+  list.dataset.key = key;
+  list.replaceChildren();
+  if (!q.length) list.append(el("li", "empty-line", "No songs waiting."));
+  q.forEach((song, i) => {
+    const li = el("li");
+    const text = el("div", "sr-text");
+    text.append(el("div", "t1", song.title), el("div", "t2", song.by + " · " + srClock(song.durationS * 1000)));
+    const up = el("button", "icon-btn");
+    up.type = "button";
+    up.setAttribute("aria-label", "Play " + song.title + " next");
+    up.disabled = i === 0;
+    up.append(icon("i-arrow-up"));
+    up.addEventListener("click", () => srQueue("move", { id: song.id, to: 0 }));
+    const rm = el("button", "icon-btn");
+    rm.type = "button";
+    rm.setAttribute("aria-label", "Remove " + song.title);
+    rm.append(icon("i-trash"));
+    rm.addEventListener("click", () => srQueue("remove", { id: song.id }));
+    li.append(text, up, rm);
+    list.append(li);
+  });
+}
+
+$("sr-play").addEventListener("click", () => {
+  invoke("sr_control", { action: sr && sr.playing ? "pause" : "play" }).catch((x) => toast(String(x), true));
+});
+$("sr-skip").addEventListener("click", () => srQueue("next"));
+$("sr-enabled").addEventListener("click", () => {
+  const on = $("sr-enabled").getAttribute("aria-checked") !== "true";
+  srQueue("enabled", { enabled: on }).then(() => toast(on ? "Song requests on" : "Song requests off"));
+});
+$("sr-queue-btn").addEventListener("click", () => {
+  const more = $("sr-more");
+  more.hidden = !more.hidden;
+  $("sr-queue-btn").setAttribute("aria-expanded", String(!more.hidden));
+});
+$("sr-seek").addEventListener("input", (e) => {
+  srSeeking = true;
+  const t = e.target;
+  t.style.setProperty("--p", (Number(t.value) / Number(t.max)) * 100 + "%");
+});
+$("sr-seek").addEventListener("change", (e) => {
+  srSeeking = false;
+  invoke("sr_control", { action: "seek", value: Number(e.target.value) }).catch(() => {});
+});
+$("sr-volume").addEventListener("input", (e) => {
+  const v = Number(e.target.value);
+  $("sr-volume-val").textContent = v + "%";
+  invoke("sr_control", { action: "volume", value: v }).catch(() => {});
+});
+
+listen("sr", (e) => renderSr(e.payload));
+// The first state, and none while signed out of Sylva.
+function loadSr() {
+  invoke("sr_state").then(renderSr).catch(() => renderSr(null));
+}
+setInterval(() => { if (sr === null) loadSr(); }, 5000);
+loadSr();

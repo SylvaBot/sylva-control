@@ -77,8 +77,8 @@ async fn auth_state(state: &AppState, notice: Option<String>) -> AuthState {
 async fn open_sylva_session(app: &AppHandle, state: &AppState, client: SylvaClient) -> Result<(), Error> {
     let channel = client.channel().await?;
     let (_, head) = client.history(&channel.key, 1).await?;
-    let live = start_sylva(app, &client, &channel.key, head);
-    let old = state.sylva.write().await.replace(SylvaSession { client, channel, live });
+    let (live, player) = start_sylva(app, &client, &channel.key, head);
+    let old = state.sylva.write().await.replace(SylvaSession { client, channel, live, player });
     if let Some(old) = old {
         old.live.cancel();
     }
@@ -482,4 +482,66 @@ pub fn open_external(app: AppHandle, url: String) -> CmdResult<()> {
         return Err("that link is not allowed".into());
     }
     app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
+fn sr_player(s: &SylvaSession) -> pine_core::sr::PlayerHandle {
+    s.player.clone()
+}
+
+/// The song player now: the queue, what is loaded and where it is.
+#[tauri::command]
+pub async fn sr_state(state: State<'_, AppState>) -> CmdResult<pine_core::sr::PlayerState> {
+    let guard = state.sylva.read().await;
+    let s = guard.as_ref().ok_or("Sign in to Sylva first.")?;
+    Ok(sr_player(s).state())
+}
+
+/// Play, pause, seek (`value` in ms) or volume (`value` 0 to 100).
+#[tauri::command]
+pub async fn sr_control(state: State<'_, AppState>, action: String, value: Option<u64>) -> CmdResult<()> {
+    use pine_core::sr::{Input, SongControl};
+    let c = match action.as_str() {
+        "play" => SongControl::Play,
+        "pause" => SongControl::Pause,
+        "seek" => SongControl::Seek { position_ms: value.unwrap_or(0) },
+        "volume" => SongControl::Volume { volume: value.unwrap_or(60).min(100) as u8 },
+        other => return Err(format!("unknown action: {other}")),
+    };
+    let guard = state.sylva.read().await;
+    let s = guard.as_ref().ok_or("Sign in to Sylva first.")?;
+    sr_player(s).send(Input::Control(c));
+    Ok(())
+}
+
+/// Change the queue on Sylva: `next` (skip), `clear`, `remove` or `move`
+/// (`id`, and `to` for a move), or turn requests on or off (`enabled`).
+#[tauri::command]
+pub async fn sr_queue(
+    state: State<'_, AppState>,
+    action: String,
+    id: Option<u64>,
+    to: Option<u64>,
+    enabled: Option<bool>,
+) -> CmdResult<()> {
+    let (client, key, player) = {
+        let guard = state.sylva.read().await;
+        let s = guard.as_ref().ok_or("Sign in to Sylva first.")?;
+        (s.client.clone(), s.channel.key.clone(), s.player.clone())
+    };
+    let st = player.state();
+    let (path, body) = match action.as_str() {
+        "next" => ("next".to_string(), serde_json::json!({ "from": st.view.current.as_ref().map(|s| s.id) })),
+        "clear" => ("clear".to_string(), Value::Null),
+        "remove" => (format!("{}/remove", id.ok_or("which song?")?), Value::Null),
+        "move" => (format!("{}/move", id.ok_or("which song?")?), serde_json::json!({ "to": to.unwrap_or(0) })),
+        "enabled" => {
+            let mut settings = serde_json::to_value(&st.view.settings).map_err(|e| e.to_string())?;
+            settings["enabled"] = Value::Bool(enabled.unwrap_or(false));
+            ("settings".to_string(), settings)
+        }
+        other => return Err(format!("unknown action: {other}")),
+    };
+    let v = client.songs_action(&key, &path, body).await.map_err(sylva_err)?;
+    player.send(pine_core::sr::Input::Songs(Box::new(v)));
+    Ok(())
 }
