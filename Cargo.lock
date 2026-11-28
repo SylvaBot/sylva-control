@@ -2846,7 +2846,7 @@ checksum = "c938015719552d665fd0553b90d96cd7ff58e83e4c061ca99e6bb78865a72752"
 
 [[package]]
 name = "pine"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "cargo-packager-updater",
  "chrono",
@@ -2869,7 +2869,7 @@ dependencies = [
 
 [[package]]
 name = "pine-core"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "futures-util",
  "log",
@@ -3729,7 +3729,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sylva-look"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "eframe",
  "image",

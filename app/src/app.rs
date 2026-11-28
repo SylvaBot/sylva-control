@@ -1764,7 +1764,7 @@ impl App {
         let screen = ctx.content_rect();
         let r = Rect::from_min_max(pos2(screen.left(), screen.top() + TITLEBAR), screen.max);
         let mut clicked = false;
-        egui::Area::new(Id::unique(("scrim", id))).order(Order::Foreground).fixed_pos(r.min).show(ctx, |ui| {
+        egui::Area::new(Id::unique(("scrim", id))).order(Order::Middle).fixed_pos(r.min).show(ctx, |ui| {
             let resp = ui.allocate_rect(Rect::from_min_size(r.min, r.size()), Sense::click());
             ui.painter().rect_filled(r, 0.0, SCRIM);
             clicked = resp.clicked();
