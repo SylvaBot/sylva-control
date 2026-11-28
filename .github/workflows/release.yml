@@ -154,6 +154,6 @@ jobs:
             Windows: download `Sylva-Control_*_x64-setup.exe` and run it. It is not code signed yet, so if SmartScreen warns, click More info, then Run anyway.
             macOS: the `.dmg` (`aarch64` for Apple Silicon, `x64` for Intel). Not notarized yet: the first time, right click Sylva Control in Applications and choose Open.
             Linux: the `.AppImage`, `.deb` or `.rpm`.
-            Already have Sylva Control 0.6.0 or newer? It updates itself: click Update at the top when it appears. Coming from Sylva Desktop or Cortex (0.5.x or older)? Run this installer once; sign-ins and settings carry over.
+            Already have Sylva Control, Sylva Desktop or Cortex installed? It updates itself: click Update at the top when it appears.
           files: out/*
           fail_on_unmatched_files: true
