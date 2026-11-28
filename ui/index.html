@@ -50,6 +50,9 @@
 <symbol id="i-monitor" viewBox="0 0 256 256" fill="currentColor"><path d="M232,64V176a24,24,0,0,1-24,24H48a24,24,0,0,1-24-24V64A24,24,0,0,1,48,40H208A24,24,0,0,1,232,64ZM160,216H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16Z"/></symbol>
 <symbol id="i-minus" viewBox="0 0 256 256" fill="currentColor"><path d="M228,128a12,12,0,0,1-12,12H40a12,12,0,0,1,0-24H216A12,12,0,0,1,228,128Z"/></symbol>
 <symbol id="i-square" viewBox="0 0 256 256" fill="currentColor"><path d="M208,28H48A20,20,0,0,0,28,48V208a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V48A20,20,0,0,0,208,28Zm-4,176H52V52H204Z"/></symbol>
+<symbol id="i-music" viewBox="0 0 256 256" fill="currentColor"><path d="M210.3,56.34l-80-24A8,8,0,0,0,120,40V148.26A48,48,0,1,0,136,184V98.75l69.7,20.91A8,8,0,0,0,216,112V64A8,8,0,0,0,210.3,56.34Z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM112,168a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm0-120H96V40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Z"/></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 256 256" fill="currentColor"><path d="M208.49,120.49a12,12,0,0,1-17,0L140,69V216a12,12,0,0,1-24,0V69L64.49,120.49a12,12,0,0,1-17-17l72-72a12,12,0,0,1,17,0l72,72A12,12,0,0,1,208.49,120.49Z"/></symbol>
 </defs></svg>
 
   <div class="app">
@@ -136,6 +139,30 @@
               <button class="grp qa" id="act-pause" type="button" aria-pressed="false"><span class="tile"><svg><use href="#i-pause"/></svg></span><span class="qa-text"><span class="t1">Pause alerts</span><span class="t2">Alerts play as they come</span></span></button>
               <button class="grp qa" id="act-skip" type="button"><span class="tile"><svg><use href="#i-skip"/></svg></span><span class="qa-text"><span class="t1">Skip alert</span><span class="t2">End the one on screen</span></span></button>
               <button class="grp qa" id="act-reload" type="button"><span class="tile"><svg><use href="#i-layers"/></svg></span><span class="qa-text"><span class="t1">Reload overlays</span><span class="t2">Refresh every OBS source</span></span></button>
+            </div>
+          </section>
+
+          <section class="sect" id="sec-sr" aria-labelledby="sr-title" hidden>
+            <div class="sect-head">
+              <div><h2 id="sr-title">Song requests</h2></div>
+              <label class="sr-toggle"><span id="sr-on-label">Requests off</span><button class="switch" type="button" role="switch" id="sr-enabled" aria-checked="false" aria-label="Take song requests"></button></label>
+            </div>
+            <div class="grp sr">
+              <div class="sr-row">
+                <span class="tile"><svg><use href="#i-music"/></svg></span>
+                <div class="sr-text">
+                  <div class="t1" id="sr-title-text">Nothing playing</div>
+                  <div class="t2" id="sr-sub">Viewers add songs with !sr</div>
+                </div>
+                <button class="icon-btn sr-btn" id="sr-play" type="button" aria-label="Play" disabled><svg><use href="#i-play"/></svg></button>
+                <button class="icon-btn sr-btn" id="sr-skip" type="button" aria-label="Skip" disabled><svg><use href="#i-skip"/></svg></button>
+                <button class="btn sm ghost sr-qbtn" id="sr-queue-btn" type="button" aria-expanded="false" aria-controls="sr-more">Queue <span id="sr-count">0</span></button>
+              </div>
+              <input type="range" class="sr-seek" id="sr-seek" min="0" max="1" step="1000" value="0" aria-label="Position" disabled>
+              <div class="sr-more" id="sr-more" hidden>
+                <div class="sr-vol"><svg><use href="#i-vol"/></svg><input type="range" id="sr-volume" min="0" max="100" step="5" value="60" aria-label="Volume"><span class="mono" id="sr-volume-val">60%</span></div>
+                <ol class="sr-list" id="sr-list"></ol>
+              </div>
             </div>
           </section>
 

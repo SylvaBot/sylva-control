@@ -4,6 +4,7 @@
 pub mod activity;
 pub mod error;
 pub mod public;
+pub mod sr;
 pub mod sylva;
 pub mod twitch;
 

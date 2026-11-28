@@ -205,6 +205,44 @@ impl SylvaClient {
         Ok(())
     }
 
+    /// The song request queue now.
+    pub async fn songs(&self, key: &str) -> Result<crate::sr::SongsView> {
+        let resp = self
+            .http
+            .get(format!("{}/v1/channels/{}/songs", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        Ok(check(resp).await?.json().await?)
+    }
+
+    /// Change the song queue: `next`, `clear`, `settings`, `control`,
+    /// `{id}/remove` or `{id}/move`. Returns the queue after it.
+    pub async fn songs_action(&self, key: &str, action: &str, body: Value) -> Result<crate::sr::SongsView> {
+        let action: String = action.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '/').collect();
+        let resp = self
+            .http
+            .post(format!("{}/v1/channels/{}/songs/{action}", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .json(&body)
+            .send()
+            .await?;
+        Ok(check(resp).await?.json().await?)
+    }
+
+    /// Tell Sylva what the player is doing.
+    pub async fn report_playback(&self, key: &str, p: &crate::sr::Playback) -> Result<()> {
+        let resp = self
+            .http
+            .post(format!("{}/v1/channels/{}/songs/player", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .json(p)
+            .send()
+            .await?;
+        check(resp).await?;
+        Ok(())
+    }
+
     /// Play an old event's alert next.
     pub async fn replay(&self, key: &str, seq: u64) -> Result<()> {
         let resp = self
@@ -294,6 +332,10 @@ pub enum LiveEvent {
     Activity(Box<Activity>),
     /// How many tips wait for approval changed.
     Tips(u32),
+    /// The song request queue changed.
+    Songs(Box<crate::sr::SongsView>),
+    /// A play, pause, seek or volume press from the dashboard.
+    SongControl(crate::sr::SongControl),
 }
 
 /// Live activity until `cancel` fires. Reconnects on its own and asks for
@@ -394,6 +436,16 @@ async fn session(
                     Some("tips") => {
                         let held = frame.get("held").and_then(Value::as_u64).unwrap_or(0) as u32;
                         let _ = tx.send(LiveEvent::Tips(held)).await;
+                    }
+                    Some("songs") => {
+                        if let Ok(v) = serde_json::from_value(frame) {
+                            let _ = tx.send(LiveEvent::Songs(Box::new(v))).await;
+                        }
+                    }
+                    Some("songControl") => {
+                        if let Ok(c) = serde_json::from_value(frame["control"].clone()) {
+                            let _ = tx.send(LiveEvent::SongControl(c)).await;
+                        }
                     }
                     Some("event") => {
                         if let Some(seq) = frame.get("seq").and_then(Value::as_u64) {
