@@ -1,11 +1,16 @@
-//! The player: ties the queue, the resolver and the audio engine together.
+//! The player: ties Sylva's queue to the streamer's Spotify app.
 //!
 //! It runs as one task. Sylva tells it which song is up (`songs` frames);
-//! it fetches that song's audio, plays it, fetches the next one ahead, and
-//! asks Sylva for the next song when one ends. It reports playback to Sylva
-//! on every change and every 10 seconds, so the dashboard and the channel
-//! page always show what is really playing. A front end only reads
-//! [`PlayerState`] and sends [`Input`]s; the UI holds no playback logic.
+//! it starts that track in Spotify, watches Spotify about once a second to
+//! know the position and when the track ends, and then asks Sylva for the
+//! next song. It reports playback to Sylva on every change and every 10
+//! seconds, so the dashboard and the channel page always show what is really
+//! playing. A front end only reads [`PlayerState`] and sends [`Input`]s; the
+//! UI holds no playback logic.
+//!
+//! The streamer's own Spotify listening is left alone: nothing is sent to
+//! Spotify until play is pressed, and if they put on something else in
+//! Spotify the player steps back and waits for play again.
 
 use std::time::Duration;
 
@@ -13,14 +18,18 @@ use serde::Serialize;
 use tokio::sync::{mpsc, watch};
 use tokio_util::sync::CancellationToken;
 
-use super::audio::{AudioEngine, Command, Event};
 use super::queue::{Playback, Queue, SongControl, SongsView};
-use super::resolve;
+use super::spotify::{Spotify, SpotifyError};
 use crate::sylva::SylvaClient;
 
-const REPORT_EVERY: Duration = Duration::from_secs(10);
-/// After this many songs in a row fail to load, stop skipping on our own:
-/// YouTube is likely refusing every song, and skipping would empty the queue.
+const TICK: Duration = Duration::from_secs(1);
+/// Report to Sylva at least this often, in ticks.
+const REPORT_TICKS: u32 = 10;
+/// Check Spotify this often while paused, in ticks.
+const PAUSED_POLL_TICKS: u32 = 5;
+/// A track this close to its end counts as finished when Spotify moves on.
+const END_SLACK_MS: u64 = 3_000;
+/// After this many songs in a row fail to start, stop skipping on our own.
 const MAX_AUTO_SKIPS: u32 = 2;
 
 /// What a front end shows.
@@ -28,14 +37,15 @@ const MAX_AUTO_SKIPS: u32 = 2;
 #[serde(rename_all = "camelCase")]
 pub struct PlayerState {
     pub view: SongsView,
-    /// The song the engine has loaded, by id.
+    /// The song started in Spotify, by id.
     pub loaded: Option<u64>,
+    /// Asking Spotify to start a song.
     pub loading: bool,
     pub playing: bool,
     pub position_ms: u64,
     pub duration_ms: u64,
     pub volume: u8,
-    /// A problem worth showing, such as a song that would not load.
+    /// A problem worth showing, such as Spotify being closed.
     pub status: Option<String>,
 }
 
@@ -65,13 +75,6 @@ impl PlayerHandle {
     }
 }
 
-/// A fetched song, or why it failed.
-struct Fetched {
-    video_id: String,
-    ahead: bool,
-    result: Result<Vec<u8>, String>,
-}
-
 /// Start the player. Spawn the returned future on the async runtime; it
 /// ends when `cancel` fires.
 pub fn player(
@@ -88,74 +91,64 @@ pub fn player(
 struct Player {
     client: SylvaClient,
     key: String,
-    http: reqwest::Client,
+    spotify: Spotify,
     queue: Queue,
     state: PlayerState,
     out: watch::Sender<PlayerState>,
-    /// Play as soon as a song is ready. Off at launch until the streamer
+    /// Play as soon as a song is up. Off at launch until the streamer
     /// presses play, then on until they pause.
     wants_play: bool,
-    /// The fetch for the song up now, so a skip can stop it.
-    fetching: Option<(String, CancellationToken)>,
-    /// The next song's audio, fetched ahead.
-    ahead: Option<(String, Vec<u8>)>,
-    ahead_fetching: Option<String>,
+    /// The Spotify track the song up now was started as.
+    started: Option<String>,
     failures: u32,
+    ticks: u32,
     last_report: Option<Playback>,
-    volume_known: bool,
 }
 
 impl Player {
     fn new(client: SylvaClient, key: String, out: watch::Sender<PlayerState>) -> Self {
-        let http = reqwest::Client::builder()
-            .user_agent("Mozilla/5.0")
-            .connect_timeout(Duration::from_secs(10))
-            .build()
-            .unwrap_or_default();
         Player {
+            spotify: Spotify::new(client.clone(), key.clone()),
             client,
             key,
-            http,
             queue: Queue::default(),
             state: PlayerState { volume: 60, ..Default::default() },
             out,
             wants_play: false,
-            fetching: None,
-            ahead: None,
-            ahead_fetching: None,
+            started: None,
             failures: 0,
+            ticks: 0,
             last_report: None,
-            volume_known: false,
         }
     }
 
     async fn run(mut self, mut rx: mpsc::UnboundedReceiver<Input>, cancel: CancellationToken) {
-        let (ev_tx, mut events) = mpsc::unbounded_channel();
-        let engine = AudioEngine::start(ev_tx);
-        engine.send(Command::Volume(self.state.volume));
-        let (fetch_tx, mut fetched) = mpsc::unbounded_channel::<Fetched>();
-        let mut tick = tokio::time::interval(REPORT_EVERY);
+        let mut tick = tokio::time::interval(TICK);
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
         if let Ok(v) = self.client.songs(&self.key).await {
-            self.take_view(v, &engine, &fetch_tx);
+            self.take_view(v).await;
         }
         loop {
+            let mut heartbeat = false;
             tokio::select! {
-                _ = cancel.cancelled() => {
-                    engine.send(Command::Stop);
-                    if let Some((_, c)) = self.fetching.take() { c.cancel(); }
-                    return;
-                }
+                _ = cancel.cancelled() => return,
                 Some(input) = rx.recv() => match input {
-                    Input::Songs(v) => self.take_view(*v, &engine, &fetch_tx),
-                    Input::Control(c) => self.control(c, &engine),
+                    Input::Songs(v) => self.take_view(*v).await,
+                    Input::Control(c) => self.control(c).await,
                 },
-                Some(ev) = events.recv() => self.engine_event(ev, &engine).await,
-                Some(f) = fetched.recv() => self.fetched(f, &engine).await,
-                _ = tick.tick() => self.report(true).await,
+                _ = tick.tick() => {
+                    self.ticks = self.ticks.wrapping_add(1);
+                    let poll = self.started.is_some()
+                        && (self.state.playing || self.ticks.is_multiple_of(PAUSED_POLL_TICKS));
+                    if poll {
+                        self.poll().await;
+                    }
+                    heartbeat = self.ticks.is_multiple_of(REPORT_TICKS);
+                }
             }
             self.publish();
-            self.report(false).await;
+            self.report(heartbeat).await;
         }
     }
 
@@ -178,15 +171,12 @@ impl Player {
             playing: self.state.playing,
             position_ms: self.state.position_ms,
             volume: self.state.volume,
-            status: self.state.status.clone().or_else(|| self.state.loading.then(|| "Loading the song".into())),
+            status: self.state.status.clone().or_else(|| self.state.loading.then(|| "Starting it in Spotify".into())),
         };
         let changed = match &self.last_report {
             None => true,
             Some(old) => {
-                old.song_id != p.song_id
-                    || old.playing != p.playing
-                    || old.volume != p.volume
-                    || old.status != p.status
+                old.song_id != p.song_id || old.playing != p.playing || old.volume != p.volume || old.status != p.status
             }
         };
         if !(heartbeat || changed) {
@@ -198,99 +188,81 @@ impl Player {
         self.last_report = Some(p);
     }
 
-    fn take_view(&mut self, v: SongsView, engine: &AudioEngine, fetch_tx: &mpsc::UnboundedSender<Fetched>) {
+    async fn take_view(&mut self, v: SongsView) {
+        let first = !self.queue.known();
         let changed = self.queue.update(v);
-        if !self.volume_known {
-            self.volume_known = true;
+        if first {
             self.state.volume = self.queue.last_volume();
-            engine.send(Command::Volume(self.state.volume));
         }
         if changed {
-            self.load_current(engine, fetch_tx);
+            self.load_current().await;
         }
-        self.fetch_ahead(fetch_tx);
     }
 
-    fn load_current(&mut self, engine: &AudioEngine, fetch_tx: &mpsc::UnboundedSender<Fetched>) {
-        if let Some((_, c)) = self.fetching.take() {
-            c.cancel();
-        }
+    /// A new song is up: start it in Spotify if the streamer pressed play.
+    async fn load_current(&mut self) {
+        let was_ours = self.started.take().is_some();
         self.state.loaded = None;
         self.state.position_ms = 0;
-        self.state.duration_ms = 0;
         self.state.playing = false;
         self.state.status = None;
+        self.state.loading = false;
         let Some(song) = self.queue.current().cloned() else {
-            self.state.loading = false;
-            engine.send(Command::Stop);
+            self.state.duration_ms = 0;
+            // The queue ran out: stop Spotify moving on to songs nobody asked for.
+            if was_ours && self.wants_play {
+                let _ = self.spotify.pause().await;
+            }
             return;
         };
-        if let Some((id, bytes)) = self.ahead.take() {
-            if id == song.video_id {
-                self.state.loading = true;
-                let _ = fetch_tx.send(Fetched { video_id: id, ahead: false, result: Ok(bytes) });
-                return;
-            }
+        self.state.duration_ms = song.duration_s as u64 * 1000;
+        if self.wants_play {
+            self.start().await;
         }
-        self.state.loading = true;
-        let cancel = CancellationToken::new();
-        self.fetching = Some((song.video_id.clone(), cancel.clone()));
-        spawn_fetch(self.http.clone(), song.video_id, false, cancel, fetch_tx.clone());
     }
 
-    fn fetch_ahead(&mut self, fetch_tx: &mpsc::UnboundedSender<Fetched>) {
-        let Some(next) = self.queue.up_next() else { return };
-        let have = self.ahead.as_ref().is_some_and(|(id, _)| *id == next.video_id);
-        if have || self.ahead_fetching.as_deref() == Some(next.video_id.as_str()) {
-            return;
-        }
-        // One download at a time keeps the song up now quick to start.
-        if self.state.loading {
-            return;
-        }
-        self.ahead_fetching = Some(next.video_id.clone());
-        spawn_fetch(self.http.clone(), next.video_id.clone(), true, CancellationToken::new(), fetch_tx.clone());
-    }
-
-    async fn fetched(&mut self, f: Fetched, engine: &AudioEngine) {
-        if f.ahead {
-            self.ahead_fetching = None;
-            if let Ok(bytes) = f.result {
-                self.ahead = Some((f.video_id, bytes));
-            }
-            return;
-        }
+    /// Start the song up now in Spotify, where the last session left it.
+    async fn start(&mut self) {
         let Some(song) = self.queue.current().cloned() else { return };
-        if song.video_id != f.video_id {
+        if song.track.is_empty() {
+            self.fail("This song was asked for on YouTube before Spotify, so it can't play".into()).await;
             return;
         }
-        self.fetching = None;
-        match f.result {
-            Ok(bytes) => {
-                // Pick up where the last session left off.
-                let p = &self.queue.view().playback;
-                let start_ms = if p.song_id == Some(song.id) { p.position_ms } else { 0 };
+        let p = &self.queue.view().playback;
+        let from = if p.song_id == Some(song.id) { p.position_ms } else { 0 };
+        self.state.loading = true;
+        self.publish();
+        let r = self.spotify.play(&song.track, from).await;
+        self.state.loading = false;
+        match r {
+            Ok(()) => {
+                self.started = Some(song.track.clone());
                 self.state.loaded = Some(song.id);
-                self.state.position_ms = start_ms;
-                engine.send(Command::Load { bytes, start_ms, play: self.wants_play });
+                self.state.playing = true;
+                self.state.position_ms = from;
+                self.state.status = None;
+                self.failures = 0;
             }
+            Err(e @ SpotifyError::Other(_)) => self.fail(format!("Could not start this song: {e}")).await,
+            // Spotify closed, no Premium, not connected: skipping would not help.
             Err(e) => {
-                self.state.loading = false;
-                self.fail(format!("Could not load this song: {e}")).await;
+                self.state.playing = false;
+                self.state.status = Some(e.to_string());
             }
         }
     }
 
-    /// A song that will not play: skip it, unless several in a row failed.
+    /// A song that will not start: skip it, unless several in a row failed.
     async fn fail(&mut self, message: String) {
         log::warn!("{message}");
         self.failures += 1;
         self.state.playing = false;
         if self.failures <= MAX_AUTO_SKIPS {
             self.state.status = Some(format!("{message}. Skipping it."));
+            self.publish();
             self.report(false).await;
             tokio::time::sleep(Duration::from_secs(2)).await;
-            self.next().await;
+            Box::pin(self.next()).await;
         } else {
             self.state.status = Some(format!("{message}. Press skip to try the next song."));
         }
@@ -298,89 +270,111 @@ impl Player {
 
     async fn next(&mut self) {
         let from = self.queue.current().map(|s| s.id);
+        // The answer and the `songs` frame both carry the new queue; take the
+        // answer now so the next song starts without waiting for the frame.
         match self.client.songs_action(&self.key, "next", serde_json::json!({ "from": from })).await {
-            // The answer and the `songs` frame both carry the new queue.
-            Ok(v) => {
-                let _ = v;
-            }
+            Ok(v) => Box::pin(self.take_view(v)).await,
             Err(e) => log::warn!("could not move to the next song: {e}"),
         }
     }
 
-    async fn engine_event(&mut self, ev: Event, engine: &AudioEngine) {
-        match ev {
-            Event::Loaded { duration_ms } => {
-                self.state.loading = false;
-                self.state.duration_ms = duration_ms;
-                self.state.playing = self.wants_play;
-                self.failures = 0;
+    /// Ask Spotify what it is doing, and move on when our track ended.
+    async fn poll(&mut self) {
+        let Some(ours) = self.started.clone() else { return };
+        let now = match self.spotify.now().await {
+            Ok(n) => n,
+            Err(e @ (SpotifyError::NotConnected(_) | SpotifyError::Premium)) => {
+                self.state.status = Some(e.to_string());
+                return;
             }
-            Event::Position { ms, playing } => {
-                self.state.position_ms = ms;
-                self.state.playing = playing;
+            Err(e) => {
+                log::debug!("spotify poll: {e}");
+                return;
             }
-            Event::Ended => {
-                self.state.playing = false;
-                self.next().await;
-            }
-            Event::Failed(m) if m.starts_with("no sound device") => {
-                self.state.status = Some(format!("Sylva Control has {m}"));
-            }
-            Event::Failed(m) => {
-                self.state.loading = false;
-                engine.send(Command::Stop);
-                self.state.loaded = None;
-                self.fail(format!("Could not play this song: {m}")).await;
-            }
+        };
+        let last = self.state.position_ms;
+        let total = self.state.duration_ms;
+        let near_end = total > 0 && last + END_SLACK_MS >= total;
+        if let Some(v) = now.volume {
+            self.state.volume = v;
         }
+        if now.track.as_deref() == Some(ours.as_str()) {
+            if now.duration_ms > 0 {
+                self.state.duration_ms = now.duration_ms;
+            }
+            // A one track play stops at the end and rewinds to the start.
+            let at_end = now.position_ms == 0 || now.position_ms + 1_500 >= now.duration_ms;
+            if !now.playing && near_end && at_end {
+                self.ended().await;
+                return;
+            }
+            self.state.position_ms = now.position_ms;
+            self.state.playing = now.playing;
+            return;
+        }
+        if near_end {
+            // Spotify finished it and moved on by itself (autoplay).
+            self.ended().await;
+            return;
+        }
+        // The streamer put something else on in Spotify: step back.
+        self.started = None;
+        self.state.loaded = None;
+        self.state.playing = false;
+        self.wants_play = false;
+        self.state.status = Some("Spotify is playing something else. Press play to go back to the requests".into());
     }
 
-    fn control(&mut self, c: SongControl, engine: &AudioEngine) {
-        match c {
+    async fn ended(&mut self) {
+        self.state.playing = false;
+        self.state.position_ms = self.state.duration_ms;
+        self.next().await;
+    }
+
+    async fn control(&mut self, c: SongControl) {
+        let ours = self.started.is_some() && self.state.loaded == self.queue.current().map(|s| s.id);
+        let r = match c {
             SongControl::Play => {
                 self.wants_play = true;
-                if self.state.loaded.is_some() {
-                    engine.send(Command::Play);
-                    self.state.playing = true;
-                }
-                if self.state.status.as_deref().is_some_and(|s| s.contains("No sound") || s.contains("sound device")) {
-                    self.state.status = None;
+                if ours {
+                    let r = self.spotify.resume().await;
+                    if r.is_ok() {
+                        self.state.playing = true;
+                        self.state.status = None;
+                    }
+                    r
+                } else {
+                    self.failures = 0;
+                    self.start().await;
+                    Ok(())
                 }
             }
             SongControl::Pause => {
                 self.wants_play = false;
-                engine.send(Command::Pause);
                 self.state.playing = false;
+                if ours {
+                    self.spotify.pause().await
+                } else {
+                    Ok(())
+                }
             }
             SongControl::Seek { position_ms } => {
+                if !ours {
+                    return;
+                }
                 let to = if self.state.duration_ms > 0 { position_ms.min(self.state.duration_ms) } else { position_ms };
-                engine.send(Command::Seek(to));
                 self.state.position_ms = to;
                 // A seek is news for everyone showing the position.
                 self.last_report = None;
+                self.spotify.seek(to).await
             }
             SongControl::Volume { volume } => {
                 self.state.volume = volume.min(100);
-                engine.send(Command::Volume(self.state.volume));
+                self.spotify.volume(self.state.volume).await
             }
+        };
+        if let Err(e) = r {
+            self.state.status = Some(e.to_string());
         }
     }
-}
-
-fn spawn_fetch(
-    http: reqwest::Client,
-    video_id: String,
-    ahead: bool,
-    cancel: CancellationToken,
-    tx: mpsc::UnboundedSender<Fetched>,
-) {
-    tokio::spawn(async move {
-        let result = async {
-            resolve::fetch_audio(&http, &video_id, &cancel).await.map_err(|e| e.to_string())
-        }
-        .await;
-        if !cancel.is_cancelled() {
-            let _ = tx.send(Fetched { video_id, ahead, result });
-        }
-    });
 }

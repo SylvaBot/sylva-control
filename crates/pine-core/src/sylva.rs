@@ -230,6 +230,24 @@ impl SylvaClient {
         Ok(check(resp).await?.json().await?)
     }
 
+    /// A Spotify access token for the streamer's own Spotify, from the sign in
+    /// they made on the Song requests page. `fresh` asks Sylva for a new one.
+    /// Returns the token and when it expires (ms since 1970).
+    pub async fn spotify_token(&self, key: &str, fresh: bool) -> Result<(String, i64)> {
+        let q = if fresh { "?fresh=1" } else { "" };
+        let resp = self
+            .http
+            .get(format!("{}/v1/channels/{}/songs/spotify/token{q}", self.base, enc(key)))
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+        let v: Value = check(resp).await?.json().await?;
+        match v["accessToken"].as_str() {
+            Some(t) => Ok((t.to_string(), v["expiresAt"].as_i64().unwrap_or(0))),
+            None => Err(crate::error::Error::Other("Sylva sent no Spotify token".into())),
+        }
+    }
+
     /// Tell Sylva what the player is doing.
     pub async fn report_playback(&self, key: &str, p: &crate::sr::Playback) -> Result<()> {
         let resp = self
